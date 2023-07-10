@@ -40,7 +40,7 @@ imagen.save(fp="fin.pdf", format="pdf")
 
 #TODO
 #listar archivos dentro de carpetas/pacientes
-#diff para no volver a procesar mismos archivosgit
+#diff para no volver a procesar mismos archivos / usar set()!
 #csv para presentar archivos procesados?
 #leer propiedades a guardar sobre imagen
 #sobreescribir texto con datos en imagen png

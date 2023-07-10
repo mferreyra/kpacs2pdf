@@ -16,10 +16,15 @@ plt.axis(False)
 plt.savefig("temp.png", format='png', orientation='portrait', bbox_inches='tight')
 #abrir y guardar en pdf en tamaño correcto con PIL
 imagen = Image.open("temp.png")
-imagen.save("fin.pdf", format="pdf")
+imagen.save(fp="fin.pdf", format="pdf")
 #borrar archivo png temporal
 if os.path.exists("temp.png"):
     os.remove("temp.png")
 
 #end = time.time()
 #print(str(end-start))
+
+#TODO
+#listar archivos dentro de carpetas/pacientes
+#leer propiedades a guardar sobre imagen
+#sobreescribir texto con datos en imagen png

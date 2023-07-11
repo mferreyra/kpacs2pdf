@@ -18,10 +18,10 @@ listado_nuevo = set(carpeta.rglob("*.dcm"))
 #cargar archivos ya procesados y hacer diff
 if os.path.exists("lista_procesados"):
     with open ("lista_procesados", 'rb') as leer:
-        listado_previo = pickle.load(leer)
+        listado_procesados = pickle.load(leer)
 else:
-    listado_previo = set()
-listado = listado_nuevo - listado_previo
+    listado_procesados = set()
+listado = listado_nuevo - listado_procesados
 
 #leer archivos dicom
 for item in tqdm(listado, desc="Procesando imagenes", colour="green"):
@@ -30,7 +30,7 @@ for item in tqdm(listado, desc="Procesando imagenes", colour="green"):
         im_np_array = im.pixel_array
     except Exception as e:
         with open("errores.txt", "a+") as log:
-            log.write(f"{str(item)} -> {repr(e)} |{datetime.now().strftime('%D %H:%M:%S')}|\n")
+            log.write(f"|{datetime.now().strftime('%D %H:%M:%S')}| Archivo: {str(item)}\n    Error -> {repr(e)}\n")
         continue
     #generar imagen
     plt.figure(figsize=(8.27, 11.69), dpi=100)
@@ -42,7 +42,10 @@ for item in tqdm(listado, desc="Procesando imagenes", colour="green"):
     #abrir para sobreescribir texto y guardar en pdf en tamaño correcto para A4 con PIL
     imagen = Image.open("temp.png")
     draw = ImageDraw.Draw(imagen)
-    font = ImageFont.truetype(r'C:\Users\System-Pc\Desktop\arial.ttf', 20) #Fuente?
+    try:
+        font = ImageFont.truetype(r'C:\Users\System-Pc\Desktop\arial.ttf', 20) #Fuente?
+    except:
+        font=None
     text = "Paciente Pirulo \n Vino ayer\n Lo vio el otro medico" #ler atributos a escribir
     #Abajo izq, etc en coordenadas ralativas a imagen.size -> (w,h)
     draw.text((220, 400), text, font=font)    
@@ -54,13 +57,13 @@ for item in tqdm(listado, desc="Procesando imagenes", colour="green"):
         os.remove("temp.png")
 
 #guardar listado de archivos procesados, agregando a previos
-with open("lista_procesados", 'ab') as archivo:
-    pickle.dump(listado, archivo, protocol=pickle.HIGHEST_PROTOCOL)
+with open("lista_procesados", 'wb') as archivo:
+    pickle.dump(listado_nuevo, archivo, protocol=pickle.HIGHEST_PROTOCOL)
 
 end = time.time()
 print(str(end-start))
 
 #TODO
 #leer propiedades a guardar sobre imagen y escribir en cada esquina
-#csv para presentar archivos procesados?
+#CSV para presentar archivos procesados? probar reemplazar Pickle por SQLite?
 #generar archivo ejecutable

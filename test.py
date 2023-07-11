@@ -2,12 +2,17 @@ import pydicom as dycom
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
 import os
-#import time
+import pathlib
+import time
 
-#start = time.time()
+start = time.time()
 
+carpeta = pathlib.Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
+listado = set(carpeta.rglob("*.dcm"))
+
+#for item in listado:
 #leer dicom
-im = dycom.dcmread("./prueba2.dcm")
+im = dycom.dcmread("./mama.dcm")
 im_np_array = im.pixel_array
 #generar imagen
 plt.figure(figsize=(8.27, 11.69), dpi=100)
@@ -30,13 +35,13 @@ draw.text((220, 400), text, font=font)
 
 imagen.save(fp="fin.pdf", format="pdf")
 #borrar archivo png temporal
-#if os.path.exists("temp.png"):
-#    os.remove("temp.png")
+if os.path.exists("temp.png"):
+    os.remove("temp.png")
 
 #Agregar a listado de archivos procesados
 
-#end = time.time()
-#print(str(end-start))
+end = time.time()
+print(str(end-start))
 
 #TODO
 #listar archivos dentro de carpetas/pacientes

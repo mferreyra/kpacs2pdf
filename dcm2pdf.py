@@ -6,14 +6,17 @@ import pathlib
 import pickle
 from tqdm.auto import tqdm
 from datetime import datetime
-#import img2pdf
+import img2pdf
 import time
+import logging.config
+
+logging.config.dictConfig({'disable_existing_loggers': True, "version": 1}) #Apagar warning de img2pdf
 
 start = time.time()
 
 #listar archivos en directorio
-carpeta = pathlib.Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
-#carpeta = pathlib.Path(r"C:\Users\usuario\Documents\kpacks 28.06-30.06")
+#carpeta = pathlib.Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
+carpeta = pathlib.Path(r"C:\Users\usuario\Documents\Trabajo\kpacks 28.06-30.06")
 listado_nuevo = set(carpeta.rglob("*.dcm"))
 
 #cargar archivos ya procesados y hacer diff
@@ -25,7 +28,7 @@ else:
 listado = listado_nuevo - listado_procesados
 
 #leer archivos dicom
-for item in tqdm(listado, desc="Procesando imagenes", colour="green"):
+for item in tqdm(listado, desc="Procesando imagenes", colour="green", leave=True, position=0):
     try:
         im = dicom.dcmread(str(item))
         im_np_array = im.pixel_array
@@ -51,29 +54,34 @@ for item in tqdm(listado, desc="Procesando imagenes", colour="green"):
     
     width, height = imagen.size
     
-    sup_izq = (15, 15)
-    sup_der = (width-200, 15)
-    inf_izq = (15, height-75)
-    inf_der = (width-150, height-75)
+    sup_izq = (20, 15)
+    sup_der_1 = (width-160, 15)
+    sup_der_2 = (width-90, 15)
+    inf_izq = (20, height-70)
+    inf_der = (width-90, height-70)
     
     text_sup_izq = f"{im.PatientName}\n{im.PatientSex}\n{im.PatientID}"
-    text_sup_der = f"{im.InstitutionName}\n Ref: {im.ReferringPhysicianName} / Perf: ''\nStudy date: {im.StudyDate}\nStudy time: {im.StudyTime}"
+    text_sup_der_1 = f"{im.InstitutionName}\n"
+    text_sup_der_2 = f"\n Ref: {im.ReferringPhysicianName} / Perf: ''\nStudy date: {im.StudyDate}\nStudy time: {im.StudyTime}" #TODO modificar formato de valores 
     text_inf_izq = f"W{im.WindowWidth} / C {im.WindowCenter}\n' '\nS-Value: {im.Sensitivity}"
-    text_inf_der = f"{im.BodyPartExamined }\n'Position: {im.ViewPosition}'\n{im.InstanceNumber} IMA {im.SeriesNumber}\nZoom factor: x''"
+    text_inf_der = f"{im.BodyPartExamined }\nPosition: {im.ViewPosition}\n{im.InstanceNumber} IMA {im.SeriesNumber}\nZoom factor: x0.99"
     
     draw.text(sup_izq, text_sup_izq, font=font)    
-    draw.text(sup_der, text_sup_der, font=font) 
+    draw.text(sup_der_1, text_sup_der_1, font=font)
+    draw.text(sup_der_2, text_sup_der_2, font=font)
     draw.text(inf_izq, text_inf_izq, font=font) 
     draw.text(inf_der, text_inf_der, font=font) 
 
     #imagen.show()
-    imagen.save(fp="fin2.pdf", format="pdf")
+    #imagen.save(fp="fin2.pdf", format="pdf")
+    imagen.save(fp="dcm2pdf_temp.png", format="png")
+
 
     #nueva img2pdf
-    # a4inpt = (img2pdf.mm_to_pt(210), img2pdf.mm_to_pt(297))
-    # layout_fun = img2pdf.get_layout_fun(a4inpt)
-    # with open("name.pdf", "wb") as f:
-    #     f.write(img2pdf.convert("dcm2pdf_temp.png", layout_fun=layout_fun))
+    a4inpt = (img2pdf.mm_to_pt(210), img2pdf.mm_to_pt(297))
+    layout_fun = img2pdf.get_layout_fun(a4inpt)
+    with open("name.pdf", "wb") as f:
+        f.write(img2pdf.convert("dcm2pdf_temp.png", layout_fun=layout_fun)) # type: ignore
 
     #borrar archivo png temporal
     if os.path.exists("dcm2pdf_temp.png"):
@@ -87,7 +95,7 @@ end = time.time()
 print(str(end-start))
 
 #TODO
-#Agregar directorio a procesar y guardar por consola? preguntando? argpars?
-#leer propiedades a guardar sobre imagen y escribir en cada esquina
+#Agregar directorio a procesar y guardar por consola? preguntando? argpars? os ENV?
+#modificar valores time a escribir
 #CSV para presentar archivos procesados? probar reemplazar Pickle por SQLite?
 #generar archivo ejecutable

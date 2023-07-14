@@ -5,6 +5,7 @@ import img2pdf
 
 im = dicom.dcmread("mama.dcm")
 im_np_array = im.pixel_array
+#d = datetime.strptime(im.StudyTime[::-5], '%f')
 
 plt.figure(figsize=(8.27, 11.69), dpi=100)
 plt.imshow(im_np_array, cmap="gray_r", interpolation="nearest")

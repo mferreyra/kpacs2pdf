@@ -1,11 +1,12 @@
 import pydicom as dicom
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
+from datetime import datetime
 import img2pdf
 
 im = dicom.dcmread("mama.dcm")
 im_np_array = im.pixel_array
-#d = datetime.strptime(im.StudyTime[::-5], '%f')
+d = datetime.strptime(im.StudyTime[::-5], '%f')
 
 plt.figure(figsize=(8.27, 11.69), dpi=100)
 plt.imshow(im_np_array, cmap="gray_r", interpolation="nearest")
@@ -20,7 +21,7 @@ plt.close()
 a4inpt = (img2pdf.mm_to_pt(210), img2pdf.mm_to_pt(297))
 layout_fun = img2pdf.get_layout_fun(a4inpt)
 with open("name.pdf", "wb") as f:
-    f.write(img2pdf.convert("dcm2pdf_temp.png", layout_fun=layout_fun))
+    f.write(img2pdf.convert("dcm2pdf_temp.png", layout_fun=layout_fun)) #type: ignore
 
 
 # width, height = imagen.size

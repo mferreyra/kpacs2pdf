@@ -48,29 +48,29 @@ for item in tqdm(listado, desc="Procesando imagenes", colour="green", leave=True
     imagen = Image.open("dcm2pdf_temp.png")
     draw = ImageDraw.Draw(imagen)
     try:
-        font = ImageFont.truetype(r'C:\Users\System-Pc\Desktop\arial.ttf', 11) #Fuente? TODO
+        font = ImageFont.truetype('arial.ttf', 11) #Fuente? TODO
     except:
         font=None
     
     width, height = imagen.size
     
     sup_izq = (20, 20)
-    sup_der_1 = (width-225, 20)
-    sup_der_2 = (width-90, 20)
-    sup_der_3 = (width-145, 20)
-    inf_izq = (20, height-75)
-    inf_der = (width-120, height-95)
+    sup_der_1 = (width-220, 20)
+    sup_der_2 = (width-85, 20)
+    sup_der_3 = (width-140, 20)
+    inf_izq = (20, height-65)
+    inf_der = (width-115, height-85)
     
     nombre = f'{im.PatientName}'.replace('^', ' ')
     fecha = f"{im.StudyDate[6:]}/{im.StudyDate[4:6]}/{im.StudyDate[0:4]}"
-    hora = f"{im.StudyTime[0:2]}:{im.StudyTime[3:5]}:{im.StudyTime[6:8]}"
+    hora = f"{im.StudyTime[0:2]}:{im.StudyTime[2:4]}:{im.StudyTime[4:6]}"
 
     text_sup_izq = f"{nombre}\n{im.PatientSex}\nID: {im.PatientID}"
     text_sup_der_1 = f"{im.InstitutionName}\n"
-    text_sup_der_2 = f"\n Ref: {im.ReferringPhysicianName} / Perf:"
-    text_sup_der_3 = f"\n\nStudy date: {fecha}\nStudy time: {hora}" #TODO modificar formato de valores 
-    text_inf_izq = f"W{im.WindowWidth}  /  C{im.WindowCenter}\n \nS-Value: {im.Sensitivity}"
-    text_inf_der = f"{im.BodyPartExamined }\nPosition: {im.ViewPosition}\n{im.InstanceNumber} IMA {im.SeriesNumber}\nZoom factor: x0.99"
+    text_sup_der_2 = f"\n Ref: {im.ReferringPhysicianName} / Perf:" #Si trae im.ReferringPhysicianName se puede ir de la image?
+    text_sup_der_3 = f"\n\nStudy date: {fecha}\nStudy time: {hora}"
+    text_inf_izq = f"W{im.WindowWidth}  /  C{im.WindowCenter}\n \n S-Value: {im.Sensitivity}"
+    text_inf_der = f"{im.BodyPartExamined }\nPosition: {im.ViewPosition}\n{im.InstanceNumber} IMA {im.SeriesNumber}\nZoom factor: x0.99" #Queda fijo 0.99 porque no lo tiene guardado
     
     draw.text(sup_izq, text_sup_izq, font=font, fill='white', stroke_width=1, stroke_fill='black')    
     draw.text(sup_der_1, text_sup_der_1, font=font, fill='white', stroke_width=1, stroke_fill='black')
@@ -83,17 +83,19 @@ for item in tqdm(listado, desc="Procesando imagenes", colour="green", leave=True
     #imagen.save(fp=f"./pdf/{im.PatientName}.pdf", format="pdf")
     imagen.save(fp="dcm2pdf_temp.png", format="png")
 
+    #if os.path.exists("dcm2pdf_temp.png"):
+    #    os.system('attrib +h dcm2pdf_temp.png') #Puede generar error de permiso de acceso
 
     #nueva img2pdf
     a4inpt = (img2pdf.mm_to_pt(210), img2pdf.mm_to_pt(297))
     layout_fun = img2pdf.get_layout_fun(a4inpt)
-    with open(f"./pdf/{nombre}.pdf", "wb") as f:
+    archivo_nombre = f"{nombre} - {im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]} {im.StudyTime[0:2]}.{im.StudyTime[2:4]}.{im.StudyTime[4:6]}"
+    with open(f"./pdf/{archivo_nombre}.pdf", "wb") as f:
         f.write(img2pdf.convert("dcm2pdf_temp.png", layout_fun=layout_fun)) # type: ignore
 
     #borrar archivo png temporal
     if os.path.exists("dcm2pdf_temp.png"):
         os.remove("dcm2pdf_temp.png")
-    #break #!!! QUITAR
 
 #guardar listado de archivos procesados, agregando a previos
 with open("dcm2pdf_lista_procesados", 'wb') as archivo:
@@ -103,9 +105,8 @@ end = time.time()
 print(str(end-start))
 
 #TODO
-#Modificar posicion texto segun DPI imagen y segun longitud string
-#Agregar directorio a procesar y guardar por consola? preguntando? argpars? os ENV?
-#modificar valores time a escribir y noame
+#Modificar posicion texto segun DPI imagen y segun longitud string? #im.size / get taxtbox size / etc.
+#Agregar directorio a procesar y guardar por consola? preguntando? argpars? os['ENV']?
 #CSV para presentar archivos procesados? probar reemplazar Pickle por SQLite?
 #generar archivo ejecutable
 #Usar Mypy

@@ -9,4 +9,3 @@ with open("lista", 'wb') as archivo:
 
 with open ("lista", 'rb') as leer:
     lista2 = pickle.load(leer)
-

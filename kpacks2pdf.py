@@ -120,6 +120,7 @@ if __name__ == '__main__':
 #TODO
 #Nombrar archivo como Apellido- Nombre- - CR- form dia-mes-año S{num} I0   num va contando para misma fecha
 #Agrupar pacientes en carpeta con PatientID PatientName
+#Guardar uid dentro de meta de pdf?
 #crear carpeta pdf destino si no existe, preguntar a usuario?
 #Agregar directorio a procesar y guardar por consola? preguntando? argpars? os['ENV']?
 #CSV para presentar archivos procesados? probar reemplazar Pickle por SQLite?

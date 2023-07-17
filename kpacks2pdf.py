@@ -39,6 +39,9 @@ def main():
                 log.write(f"*|{datetime.now().strftime('%D %H:%M:%S')}| Archivo: {str(item)}\n    Error -> {repr(e)}\n")
             continue
 
+        if (im.PatientID).startswith('1-'): #Saltear imagenes de MEVA para no procesarlas
+            continue
+
         #generar imagen
         plt.figure(figsize=(8.27, 11.69), dpi=150) #para generar en tamaño de A4, con resolucion aceptable
         plt.imshow(im_np_array, cmap='gray_r', interpolation='nearest')
@@ -111,13 +114,14 @@ if __name__ == '__main__':
     main()
 
 #Para compilar archivo con pyinstaller sin errores
-#pyinstaller --onefile -F --hiddenimport=pydicom.encoders.gdcm --hiddenimport=pydicom.encoders.pylibjpeg dcm2pdf.py
+#pyinstaller --onefile -F --hiddenimport=pydicom.encoders.gdcm --hiddenimport=pydicom.encoders.pylibjpeg kpacks2pdf.py
+#agregar --upx-dir "CARPETA" para reducir tamaño de .exe
 
 #TODO
-#crear carpeta pdf destino si no eciste, preguntar a usuario?
-#Modificar posicion texto segun DPI imagen y segun longitud string? #im.size / get taxtbox size / etc.
+#Saltear archivo a procesar si no es de VIDT PatientID Empieza con 1-
+#crear carpeta pdf destino si no existe, preguntar a usuario?
 #Agregar directorio a procesar y guardar por consola? preguntando? argpars? os['ENV']?
 #CSV para presentar archivos procesados? probar reemplazar Pickle por SQLite?
-#generar archivo ejecutable
+#Modificar posicion texto segun DPI imagen y segun longitud string? #im.size / get taxtbox size / etc.
 #Usar Mypy
 #Refactorizar

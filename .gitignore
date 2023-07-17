@@ -161,4 +161,6 @@ cython_debug/
 
 #VS Code
 .vscode/settings.json
-/pdf
+dcm2pdf_temp.png
+pdf/
+upx-4.0.2-win64/

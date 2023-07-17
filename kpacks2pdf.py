@@ -118,7 +118,8 @@ if __name__ == '__main__':
 #agregar --upx-dir "CARPETA" para reducir tamaño de .exe
 
 #TODO
-#Saltear archivo a procesar si no es de VIDT PatientID Empieza con 1-
+#Nombrar archivo como Apellido- Nombre- - CR- form dia-mes-año S{num} I0   num va contando para misma fecha
+#Agrupar pacientes en carpeta con PatientID PatientName
 #crear carpeta pdf destino si no existe, preguntar a usuario?
 #Agregar directorio a procesar y guardar por consola? preguntando? argpars? os['ENV']?
 #CSV para presentar archivos procesados? probar reemplazar Pickle por SQLite?

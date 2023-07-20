@@ -8,17 +8,18 @@ from tqdm.auto import tqdm
 from datetime import datetime
 import img2pdf
 import logging.config
-#import time
+import time
 
 def main():
 
     logging.config.dictConfig({'disable_existing_loggers': True, "version": 1}) #Apagar warning de img2pdf
 
-    #start = time.time()
+    start = time.time()
 
     #listar archivos en directorio
-    carpeta = Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
-    #carpeta = Path(r"C:\Users\usuario\Documents\Trabajo\kpacks 28.06-30.06")
+    #carpeta = Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
+    carpeta = Path(r"C:\Users\usuario\Documents\Trabajo\kpacks 28.06-30.06")
+    #carpeta = Path(r"C:\Users\usuario\source\kpacks2pdf\DICOM test")
     listado_nuevo = set(carpeta.rglob("*.dcm"))
 
     #cargar archivos ya procesados y hacer diff
@@ -72,7 +73,10 @@ def main():
         
         nombre = f'{im.PatientName}'.replace('^', ' ')
         fecha = f"{im.StudyDate[6:]}/{im.StudyDate[4:6]}/{im.StudyDate[0:4]}"
-        hora = f"{im.StudyTime[0:2]}:{im.StudyTime[2:4]}:{im.StudyTime[4:6]}"
+        try:
+            hora = f"{im.AcquisitionTime[0:2]}:{im.AcquisitionTime[2:4]}:{im.AcquisitionTime[4:6]}"
+        except:
+            hora = f"{im.StudyTime[0:2]}:{im.StudyTime[2:4]}:{im.StudyTime[4:6]}"
 
         text_sup_izq = f"{nombre}\n{im.PatientSex}\nID: {im.PatientID}"
         text_sup_der_1 = f"{im.InstitutionName}\n"
@@ -102,7 +106,7 @@ def main():
         #generar nombre archivo pdf segun formato actual Apellido- Nombre- - CR- form dia-mes-año S{num} I0
         #archivo_nombre = f"{im.PatientID} {nombre} ({im.StudyDate[6:]}.{im.StudyDate[4:6]}.{im.StudyDate[0:4]} - {im.StudyTime[0:2]}h{im.StudyTime[2:4]}'{im.StudyTime[4:6]}'')"
         num = 0
-        while os.path.exists(f"{nombre.upper().replace(' ', '- ').replace(',', '- ')}- - CR- from {im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]} S{num} I0.pdf"):
+        while os.path.exists(f"./pdf/{im.PatientID} {nombre}/{nombre.upper().replace(' ', '- ').replace(',', '- ')}- - CR- from {im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]} S{num} I0.pdf"):
             num+=1
             if num > 20:
                 break
@@ -123,8 +127,8 @@ def main():
     with open("dcm2pdf_lista_procesados", 'wb') as archivo:
         pickle.dump(listado_nuevo, archivo, protocol=pickle.HIGHEST_PROTOCOL)
 
-    #end = time.time()
-    #print(str(end-start))
+    end = time.time()
+    print(str(end-start))
 
 #Para generar punto de acceso del programa
 if __name__ == '__main__':
@@ -137,7 +141,6 @@ if __name__ == '__main__':
 #TODO
 #Agregar directorio a procesar y guardar por consola? preguntando? argpars? os['ENV'] config.ini? sacar pathlib
 #import tempfile para generar carpeta .tmp para archivo png?
-#Saltear otros nombres de archivos dcm?
 #Guardar uid dentro de meta de pdf?
 #CSV para presentar archivos procesados? probar reemplazar Pickle por SQLite?
 #Modificar posicion texto segun DPI imagen y segun longitud string? #im.size / get taxtbox size / etc.

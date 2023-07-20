@@ -2,7 +2,7 @@ import pydicom as dicom
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
 import os
-import pathlib
+from pathlib import Path
 import pickle
 from tqdm.auto import tqdm
 from datetime import datetime
@@ -17,8 +17,8 @@ def main():
     #start = time.time()
 
     #listar archivos en directorio
-    #carpeta = pathlib.Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
-    carpeta = pathlib.Path(r"C:\Users\usuario\Documents\Trabajo\kpacks 28.06-30.06")
+    carpeta = Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
+    #carpeta = Path(r"C:\Users\usuario\Documents\Trabajo\kpacks 28.06-30.06")
     listado_nuevo = set(carpeta.rglob("*.dcm"))
 
     #cargar archivos ya procesados y hacer diff
@@ -28,6 +28,10 @@ def main():
     else:
         listado_procesados = set()
     listado = listado_nuevo - listado_procesados
+
+    #crear carpeta para guardar pdf si no existe (evit error en img2pdf with open())
+    if not os.path.exists("./pdf/"):
+        os.makedirs("./pdf/")
 
     #leer archivos dicom
     for item in tqdm(listado, desc="Procesando imagenes", colour="green", leave=True, position=0):
@@ -47,10 +51,10 @@ def main():
         plt.imshow(im_np_array, cmap='gray_r', interpolation='nearest')
         plt.axis(False)
         #guardar imagen a png (para buscar tamaño correcto en pdf)
-        plt.savefig("dcm2pdf_temp.png", format='png', orientation='portrait', bbox_inches='tight')
+        plt.savefig("dcm2pdf_temp.temp", format='png', orientation='portrait', bbox_inches='tight')
         plt.close() #RuntimeWarning: Figures created through the pyplot interface are retained until explicitly closed and may consume too much memory.
         #abrir para sobreescribir texto y guardar en pdf en tamaño correcto para A4 con PIL
-        imagen = Image.open("dcm2pdf_temp.png")
+        imagen = Image.open("dcm2pdf_temp.temp")
         draw = ImageDraw.Draw(imagen)
         try:
             font = ImageFont.truetype('arial.ttf', 11) #Fuente? TODO
@@ -86,21 +90,34 @@ def main():
 
         #imagen.show()
         #imagen.save(fp=f"./pdf/{im.PatientName}.pdf", format="pdf")
-        imagen.save(fp="dcm2pdf_temp.png", format="png")
+        imagen.save(fp="dcm2pdf_temp.temp", format="png")    
 
-        #if os.path.exists("dcm2pdf_temp.png"):
-        #    os.system('attrib +h dcm2pdf_temp.png') #Puede generar error de permiso de acceso
+        #if os.path.exists("dcm2pdf_temp.temp"):
+        #    os.system('attrib +h dcm2pdf_temp.temp') #Puede generar error de permiso de acceso
 
         #nueva img2pdf
         a4inpt = (img2pdf.mm_to_pt(210), img2pdf.mm_to_pt(297))
         layout_fun = img2pdf.get_layout_fun(a4inpt)
-        archivo_nombre = f"{im.PatientID} {nombre} ({im.StudyDate[6:]}.{im.StudyDate[4:6]}.{im.StudyDate[0:4]} - {im.StudyTime[0:2]}h{im.StudyTime[2:4]}'{im.StudyTime[4:6]}'')"
-        with open(f"./pdf/{archivo_nombre}.pdf", "wb") as f:
-            f.write(img2pdf.convert("dcm2pdf_temp.png", layout_fun=layout_fun)) # type: ignore
+        
+        #generar nombre archivo pdf segun formato actual Apellido- Nombre- - CR- form dia-mes-año S{num} I0
+        #archivo_nombre = f"{im.PatientID} {nombre} ({im.StudyDate[6:]}.{im.StudyDate[4:6]}.{im.StudyDate[0:4]} - {im.StudyTime[0:2]}h{im.StudyTime[2:4]}'{im.StudyTime[4:6]}'')"
+        num = 0
+        while os.path.exists(f"{nombre.upper().replace(' ', '- ').replace(',', '- ')}- - CR- from {im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]} S{num} I0.pdf"):
+            num+=1
+            if num > 20:
+                break
 
-        #borrar archivo png temporal
-        if os.path.exists("dcm2pdf_temp.png"):
-            os.remove("dcm2pdf_temp.png")
+        archivo_nombre = f"{nombre.upper().replace(' ', '- ').replace(',', '- ')}- - CR- from {im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]} S{num} I0"
+
+        if not os.path.exists(f"./pdf/{im.PatientID} {nombre}"):
+            os.makedirs(f"./pdf/{im.PatientID} {nombre}")
+
+        with open(f"./pdf/{im.PatientID} {nombre}/{archivo_nombre}.pdf", "wb") as f:
+            f.write(img2pdf.convert("dcm2pdf_temp.temp", layout_fun=layout_fun)) # type: ignore
+
+    #borrar archivo png temporal
+    if os.path.exists("dcm2pdf_temp.temp"):
+        os.remove("dcm2pdf_temp.temp")
 
     #guardar listado de archivos procesados, agregando a previos
     with open("dcm2pdf_lista_procesados", 'wb') as archivo:
@@ -118,11 +135,10 @@ if __name__ == '__main__':
 #agregar --upx-dir "CARPETA" para reducir tamaño de .exe
 
 #TODO
-#Nombrar archivo como Apellido- Nombre- - CR- form dia-mes-año S{num} I0   num va contando para misma fecha
-#Agrupar pacientes en carpeta con PatientID PatientName
+#Agregar directorio a procesar y guardar por consola? preguntando? argpars? os['ENV'] config.ini? sacar pathlib
+#import tempfile para generar carpeta .tmp para archivo png?
+#Saltear otros nombres de archivos dcm?
 #Guardar uid dentro de meta de pdf?
-#crear carpeta pdf destino si no existe, preguntar a usuario?
-#Agregar directorio a procesar y guardar por consola? preguntando? argpars? os['ENV']?
 #CSV para presentar archivos procesados? probar reemplazar Pickle por SQLite?
 #Modificar posicion texto segun DPI imagen y segun longitud string? #im.size / get taxtbox size / etc.
 #Usar Mypy

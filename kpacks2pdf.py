@@ -8,13 +8,13 @@ from tqdm.auto import tqdm
 from datetime import datetime
 import img2pdf
 import logging.config
-import time
+#import time
 
 def main():
 
     logging.config.dictConfig({'disable_existing_loggers': True, "version": 1}) #Apagar warning de img2pdf
 
-    start = time.time()
+    #start = time.time()
 
     #listar archivos en directorio
     #carpeta = Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
@@ -127,15 +127,15 @@ def main():
     with open("dcm2pdf_lista_procesados", 'wb') as archivo:
         pickle.dump(listado_nuevo, archivo, protocol=pickle.HIGHEST_PROTOCOL)
 
-    end = time.time()
-    print(str(end-start))
+    #end = time.time()
+    #print(str(end-start))
 
 #Para generar punto de acceso del programa
 if __name__ == '__main__':
     main()
 
 #Para compilar archivo con pyinstaller sin errores
-#pyinstaller --onefile -F --hiddenimport=pydicom.encoders.gdcm --hiddenimport=pydicom.encoders.pylibjpeg kpacks2pdf.py
+#pyinstaller --onefile -F --hiddenimport=pydicom.encoders.gdcm --hiddenimport=pydicom.encoders.pylibjpeg --upx-dir=C:\Users\usuario\source\kpacks2pdf\upx-4.0.2-win64 --icon=C:\Users\usuario\source\kpacks2pdf\splash.ico --clean kpacks2pdf.py
 #agregar --upx-dir "CARPETA" para reducir tamaño de .exe
 
 #TODO

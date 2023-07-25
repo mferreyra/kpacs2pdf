@@ -160,8 +160,7 @@ cython_debug/
 #.idea/
 
 #VS Code
-.vscode/settings.json
+.vscode/
 #
-dcm2pdf_temp.png
-pdf/
-upx-4.0.2-win64/
+.pdf/
+.upx-4.0.2-win64/

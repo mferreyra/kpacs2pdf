@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import pickle
 from PIL import Image, ImageDraw, ImageFont
-from pydicom import dcmread
+import pydicom
 from tqdm.auto import tqdm
 
 
@@ -25,10 +25,7 @@ def generar_imagen_temp(im, temp_file):
 def sobrescribir_imagen_temp(im, temp_file, nombre, fecha, hora):
     imagen = Image.open(temp_file)
     draw = ImageDraw.Draw(imagen)
-    try:
-        font = ImageFont.truetype("arial.ttf", 11)
-    finally:
-        font = None
+    font = ImageFont.truetype("arial.ttf", 11)
     width, height = imagen.size
     # coordenadas para escribir en cada esquina
     sup_izq = (20, 20)
@@ -99,7 +96,7 @@ def main():
     # leer archivos dicom
     for item in tqdm(listado, desc="Procesando imagenes", colour="green", leave=True, position=0):
         try:
-            im = dcmread(str(item))
+            im = pydicom.dcmread(str(item))
         except Exception as error:
             with open("kpacs2pdf_errores.txt", "a+") as log:
                 log.write(f"*|{datetime.now().strftime('%D %H:%M:%S')}| Archivo: {str(item)}\n    Error -> {repr(error)}\n")
@@ -132,7 +129,7 @@ if __name__ == "__main__":
 # * Para compilar archivo con pyinstaller sin errores
 # * pyinstaller --onefile -F --hiddenimport=pydicom.encoders.gdcm --hiddenimport=pydicom.encoders.pylibjpeg
 # * --upx-dir=C:\Users\usuario\source\kpacs2pdf\upx-4.0.2-win64 --icon=C:\Users\usuario\source\kpacs2pdf\splash.ico --clean kpacs2pdf.py
-# * agregar --upx-dir "CARPETA" para reducir tamaño de .exe
+# * agregar --upx-dir "CARPETA" para reducir tamaño de .exe generado en carpeta dist
 
 # TODO
 # Agregar directorio a procesar y guardar por consola? preguntando? argpars? os['ENV'] config.ini?

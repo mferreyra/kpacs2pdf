@@ -55,7 +55,7 @@ def generar_archivo_pdf(im, temp_file, nombre_paciente, fecha):
     num = 0
     nombre_carpeta = f"{im.PatientID} {nombre_paciente}"
     nombre_upper = f"{nombre_paciente.upper().replace(' ', '- ').replace(',', '- ')}"
-    while os.path.exists(f"./pdf/{nombre_carpeta}/{nombre_upper} - - CR from {fecha} S{num} I0.pdf"):
+    while os.path.exists(f"./pdf/{nombre_carpeta}/{nombre_upper}- - CR from {fecha} S{num} I0.pdf"):
         num += 1  # ! Puede ocurrir que duplique imágenes si vuelvo a procesar la misma, ya que le asignará un num diferente (Si borro lista procesados)
         if num > 20:
             break
@@ -76,8 +76,8 @@ def main():
     ARCHIVO_ERRORES = "kpacs2pdf_errores.txt"
 
     # listar archivos en directorio
-    # carpeta = Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
-    carpeta = Path(r"C:\Users\usuario\Documents\Trabajo\kpacs 28.06-30.06")  # TODO cambiar a leer de config file
+    carpeta = Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
+    # carpeta = Path(r"C:\Users\usuario\Documents\Trabajo\kpacs 28.06-30.06")  # TODO cambiar a leer de config file
     # carpeta = Path(r"C:\Users\usuario\source\kpacs2pdf\DICOM test")
     listado_nuevo = set(carpeta.rglob("*.dcm"))
     # cargar archivos ya procesados y hacer diff
@@ -104,7 +104,7 @@ def main():
             continue
 
         nombre_paciente = f"{im.PatientName}".replace("^", " ")
-        fecha = f"{im.StudyDate[6:]}/{im.StudyDate[4:6]}/{im.StudyDate[0:4]}"
+        fecha = f"{im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]}"
         hora = f"{im.AcquisitionTime[0:2]}:{im.AcquisitionTime[2:4]}:{im.AcquisitionTime[4:6]}"
         temp_file = generar_imagen_temp(im_np_array, TEMP_FILE_NAME)  # TODO cambiar a Path
         sobrescribir_imagen_temp(im, temp_file, nombre_paciente, fecha, hora)

@@ -21,7 +21,7 @@ def generar_imagen_temp(im_numpy_array, temp_file):
     return temp_file
 
 
-def sobrescribir_imagen_temp(im, temp_file, nombre, fecha, hora):
+def sobrescribir_imagen_temp(im, temp_file, nombre_paciente, fecha, hora):
     imagen = Image.open(temp_file)
     draw = ImageDraw.Draw(imagen)
     font = ImageFont.truetype("arial.ttf", 11)
@@ -34,7 +34,7 @@ def sobrescribir_imagen_temp(im, temp_file, nombre, fecha, hora):
     inf_izq = (20, height - 65)
     inf_der = (width - 115, height - 85)
     # texto a escribir en cada una
-    text_sup_izq = f"{nombre}\n{im.PatientSex}\nID: {im.PatientID}"
+    text_sup_izq = f"{nombre_paciente}\n{im.PatientSex}\nID: {im.PatientID}"
     text_sup_der_1 = f"{im.InstitutionName}\n"
     text_sup_der_2 = f"\n Ref: {im.ReferringPhysicianName} / Perf:"  # ? Si im.ReferringPhysicianName no esta vacio, se puede ir de la image?
     text_sup_der_3 = f"\n\nStudy date: {fecha}\nStudy time: {hora}"
@@ -50,47 +50,46 @@ def sobrescribir_imagen_temp(im, temp_file, nombre, fecha, hora):
     imagen.save(fp=temp_file, format="png")
 
 
-def generar_archivo_pdf(im, temp_file, nombre):
-    # generar archivo pdf igual a formato nombre con bullzip: "Apellido- Nombre- - CR- form dia-mes-año S{num} I0"
+def generar_archivo_pdf(im, temp_file, nombre_paciente, fecha):
+    # generar archivo pdf igual a formato nombre con bullzip: "Apellido- Nombre- - CR from dia-mes-año S{num} I0"
     num = 0
-    pdf_str_nombre = f"./pdf/{im.PatientID} {nombre}/{nombre.upper().replace(' ', '- ').replace(',', '- ')}"
-    pdf_str_fecha = f"{im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]} "
-    str_file_ext = ".pdf"
-    while os.path.exists(pdf_str_nombre + "- - CR- from " + pdf_str_fecha + f"S{num} I0" + str_file_ext):
+    nombre_carpeta = f"{im.PatientID} {nombre_paciente}"
+    nombre_upper = f"{nombre_paciente.upper().replace(' ', '- ').replace(',', '- ')}"
+    while os.path.exists(f"./pdf/{nombre_carpeta}/{nombre_upper} - - CR from {fecha} S{num} I0.pdf"):
         num += 1  # ! Puede ocurrir que duplique imágenes si vuelvo a procesar la misma, ya que le asignará un num diferente (Si borro lista procesados)
         if num > 20:
             break
-    nombre_pdf = f"{nombre.upper().replace(' ', '- ').replace(',', '- ')}- - CR- from {im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]} S{num} I0"
-    if not os.path.exists(f"./pdf/{im.PatientID} {nombre}"):
-        os.makedirs(f"./pdf/{im.PatientID} {nombre}")
+    nombre_pdf = f"{nombre_upper}- - CR from {fecha} S{num} I0"
+    if not os.path.exists(f"./pdf/{nombre_carpeta}"):
+        os.makedirs(f"./pdf/{nombre_carpeta}")
     setup_A4 = (img2pdf.mm_to_pt(210), img2pdf.mm_to_pt(297))
     layout_fun = img2pdf.get_layout_fun(setup_A4)
-    with open(f"./pdf/{im.PatientID} {nombre}/{nombre_pdf}.pdf", "wb") as file:
+    archivo_pdf = f"{nombre_carpeta}/{nombre_pdf}.pdf"
+    with open(f"./pdf/{archivo_pdf}", "wb") as file:
         file.write(img2pdf.convert(temp_file, layout_fun=layout_fun))  # type: ignore
 
 
 def main():
     logging.config.dictConfig({"disable_existing_loggers": True, "version": 1})  # * Para apagar warning de img2pdf
+    LISTA_PROCESADOS = "kpacs2pdf_lista_procesados"
+    TEMP_FILE_NAME = "kpacs2pdf_temp.temp"  # TODO cambiar a PATH
+    ARCHIVO_ERRORES = "kpacs2pdf_errores.txt"
 
     # listar archivos en directorio
-    carpeta = Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
-    # carpeta = Path(r"C:\Users\usuario\Documents\Trabajo\kpacs 28.06-30.06")  # TODO cambiar a leer de config file
+    # carpeta = Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
+    carpeta = Path(r"C:\Users\usuario\Documents\Trabajo\kpacs 28.06-30.06")  # TODO cambiar a leer de config file
     # carpeta = Path(r"C:\Users\usuario\source\kpacs2pdf\DICOM test")
     listado_nuevo = set(carpeta.rglob("*.dcm"))
-
     # cargar archivos ya procesados y hacer diff
-    if os.path.exists("kpacs2pdf_lista_procesados"):  # TODO cambiar a base SQLite
-        with open("kpacs2pdf_lista_procesados", "rb") as file:
+    if os.path.exists(LISTA_PROCESADOS):  # TODO cambiar a base SQLite
+        with open(LISTA_PROCESADOS, "rb") as file:
             listado_procesados = pickle.load(file)
     else:
         listado_procesados = set()
     listado = listado_nuevo - listado_procesados
-
     # crear carpeta para guardar pdf si no existe (evit error en img2pdf with open())
     if not os.path.exists("./pdf/"):  # TODO leer de config file
         os.makedirs("./pdf/")
-
-    TEMP_FILE_NAME = "kpacs2pdf_temp.temp"  # TODO cambiar a PATH
 
     # leer archivos dicom
     for item in tqdm(listado, desc="Procesando imagenes", colour="green", leave=True, position=0):
@@ -98,28 +97,24 @@ def main():
             im = pydicom.dcmread(str(item))
             im_np_array = im.pixel_array
         except Exception as error:
-            with open("kpacs2pdf_errores.txt", "a+") as log:
+            with open(ARCHIVO_ERRORES, "a+") as log:
                 log.write(f"*|{datetime.now().strftime('%D %H:%M:%S')}| Archivo: {str(item)}\n    Error -> {repr(error)}\n")
             continue
-
         if (im.PatientID).startswith("1-"):  # * Saltear imagenes de MEVA para no procesarlas
             continue
 
-        temp_file = generar_imagen_temp(im_np_array, TEMP_FILE_NAME)  # TODO cambiar a Path
-        nombre = f"{im.PatientName}".replace("^", " ")
+        nombre_paciente = f"{im.PatientName}".replace("^", " ")
         fecha = f"{im.StudyDate[6:]}/{im.StudyDate[4:6]}/{im.StudyDate[0:4]}"
         hora = f"{im.AcquisitionTime[0:2]}:{im.AcquisitionTime[2:4]}:{im.AcquisitionTime[4:6]}"
-        sobrescribir_imagen_temp(im, temp_file, nombre, fecha, hora)
-        # if os.path.exists(temp_file):
-        #    os.system('attrib +h kpacs2pdf_temp.temp') # ! Puede generar error de permiso de acceso si queda como archivo oculto
-        generar_archivo_pdf(im, temp_file, nombre)
+        temp_file = generar_imagen_temp(im_np_array, TEMP_FILE_NAME)  # TODO cambiar a Path
+        sobrescribir_imagen_temp(im, temp_file, nombre_paciente, fecha, hora)
+        generar_archivo_pdf(im, temp_file, nombre_paciente, fecha)
 
     # borrar archivo png temporal
     if os.path.exists(TEMP_FILE_NAME):
         os.remove(TEMP_FILE_NAME)
-
     # guardar listado de archivos procesados, agregando a previos
-    with open("kpacs2pdf_lista_procesados", "wb") as archivo:
+    with open(LISTA_PROCESADOS, "wb") as archivo:
         pickle.dump(listado_nuevo, archivo, protocol=pickle.HIGHEST_PROTOCOL)
 
 

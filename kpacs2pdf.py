@@ -10,19 +10,18 @@ import pydicom
 from tqdm.auto import tqdm
 
 
-def generar_imagen_temp(im_numpy_array, temp_file):
+def generar_imagen_temp(im_numpy_array, TEMP_FILE):
     plt.figure(figsize=(8.27, 11.69), dpi=150)  # para generar en tamaño de A4, con resolucion aceptable
     plt.imshow(im_numpy_array, cmap="gray_r", interpolation="nearest")
     plt.axis(False)
     # guardar imagen a png (para buscar tamaño correcto en pdf)
-    plt.savefig(temp_file, format="png", orientation="portrait", bbox_inches="tight")
+    plt.savefig(TEMP_FILE, format="png", orientation="portrait", bbox_inches="tight")
     # RuntimeWarning: Figures created through the pyplot interface are retained until explicitly closed and may consume too much memory.
     plt.close()
-    return temp_file
 
 
-def sobrescribir_imagen_temp(im, temp_file, nombre_paciente, fecha, hora):
-    imagen = Image.open(temp_file)
+def sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha, hora):
+    imagen = Image.open(TEMP_FILE)
     draw = ImageDraw.Draw(imagen)
     font = ImageFont.truetype("arial.ttf", 11)
     width, height = imagen.size
@@ -46,39 +45,41 @@ def sobrescribir_imagen_temp(im, temp_file, nombre_paciente, fecha, hora):
     draw.text(sup_der_3, text_sup_der_3, font=font, fill="white", stroke_width=1, stroke_fill="black")
     draw.text(inf_izq, text_inf_izq, font=font, fill="white", stroke_width=1, stroke_fill="black")
     draw.text(inf_der, text_inf_der, font=font, fill="white", stroke_width=1, stroke_fill="black")
-    # imagen.save(fp=f"./pdf/{im.PatientName}.pdf", format="pdf")
-    imagen.save(fp=temp_file, format="png")
+    # guardar cambios
+    imagen.save(fp=TEMP_FILE, format="png")
 
 
-def generar_archivo_pdf(im, temp_file, nombre_paciente, fecha):
+def generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha, CARPETAS_PDF):
     # generar archivo pdf igual a formato nombre con bullzip: "Apellido- Nombre- - CR from dia-mes-año S{num} I0"
     num = 0
     nombre_carpeta = f"{im.PatientID} {nombre_paciente}"
     nombre_upper = f"{nombre_paciente.upper().replace(' ', '- ').replace(',', '- ')}"
-    while os.path.exists(f"./pdf/{nombre_carpeta}/{nombre_upper}- - CR from {fecha} S{num} I0.pdf"):
+    while os.path.exists(f"{CARPETAS_PDF}/{nombre_carpeta}/{nombre_upper}- - CR from {fecha} S{num} I0.pdf"):
         num += 1  # ! Puede ocurrir que duplique imágenes si vuelvo a procesar la misma, ya que le asignará un num diferente (Si borro lista procesados)
         if num > 20:
             break
     nombre_pdf = f"{nombre_upper}- - CR from {fecha} S{num} I0"
-    if not os.path.exists(f"./pdf/{nombre_carpeta}"):
-        os.makedirs(f"./pdf/{nombre_carpeta}")
+    if not os.path.exists(f"{CARPETAS_PDF}/{nombre_carpeta}"):
+        os.makedirs(f"{CARPETAS_PDF}/{nombre_carpeta}")
     setup_A4 = (img2pdf.mm_to_pt(210), img2pdf.mm_to_pt(297))
     layout_fun = img2pdf.get_layout_fun(setup_A4)
     archivo_pdf = f"{nombre_carpeta}/{nombre_pdf}.pdf"
-    with open(f"./pdf/{archivo_pdf}", "wb") as file:
-        file.write(img2pdf.convert(temp_file, layout_fun=layout_fun))  # type: ignore
+    with open(f"{CARPETAS_PDF}/{archivo_pdf}", "wb") as file:
+        file.write(img2pdf.convert(TEMP_FILE.as_posix(), layout_fun=layout_fun))  # type: ignore
 
 
 def main():
     logging.config.dictConfig({"disable_existing_loggers": True, "version": 1})  # * Para apagar warning de img2pdf
-    LISTA_PROCESADOS = "kpacs2pdf_lista_procesados"
-    TEMP_FILE_NAME = "kpacs2pdf_temp.temp"  # TODO cambiar a PATH
-    ARCHIVO_ERRORES = "kpacs2pdf_errores.txt"
+    LISTA_PROCESADOS = Path("kpacs2pdf_lista_procesados").absolute()
+    TEMP_FILE = Path("kpacs2pdf_temp.temp").absolute()
+    ARCHIVO_ERRORES = Path("kpacs2pdf_errores.txt").absolute()
+    CARPETAS_PDF = Path("./pdf").absolute()
+    # RUTA_DICOM = 
 
     # listar archivos en directorio
-    carpeta = Path(r"C:\Users\mferreyra\Desktop\Kpacks Quilmes")
-    # carpeta = Path(r"C:\Users\usuario\Documents\Trabajo\kpacs 28.06-30.06")  # TODO cambiar a leer de config file
-    # carpeta = Path(r"C:\Users\usuario\source\kpacs2pdf\DICOM test")
+    # carpeta = Path(r"C:/Users/mferreyra/Desktop/Kpacks Quilmes")
+    carpeta = Path("C:/Users/usuario/Documents/Trabajo/kpacs 28.06-30.06")  # TODO cambiar a leer de config file
+    # carpeta = Path(r"C:/Users/usuario/source/kpacs2pdf/DICOM test")
     listado_nuevo = set(carpeta.rglob("*.dcm"))
     # cargar archivos ya procesados y hacer diff
     if os.path.exists(LISTA_PROCESADOS):  # TODO cambiar a base SQLite
@@ -88,8 +89,8 @@ def main():
         listado_procesados = set()
     listado = listado_nuevo - listado_procesados
     # crear carpeta para guardar pdf si no existe (evit error en img2pdf with open())
-    if not os.path.exists("./pdf/"):  # TODO leer de config file
-        os.makedirs("./pdf/")
+    if not os.path.exists(CARPETAS_PDF):  # TODO leer de config file
+        os.makedirs(CARPETAS_PDF)
 
     # leer archivos dicom
     for item in tqdm(listado, desc="Procesando imagenes", colour="green", leave=True, position=0):
@@ -106,13 +107,13 @@ def main():
         nombre_paciente = f"{im.PatientName}".replace("^", " ")
         fecha = f"{im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]}"
         hora = f"{im.AcquisitionTime[0:2]}:{im.AcquisitionTime[2:4]}:{im.AcquisitionTime[4:6]}"
-        temp_file = generar_imagen_temp(im_np_array, TEMP_FILE_NAME)  # TODO cambiar a Path
-        sobrescribir_imagen_temp(im, temp_file, nombre_paciente, fecha, hora)
-        generar_archivo_pdf(im, temp_file, nombre_paciente, fecha)
+        generar_imagen_temp(im_np_array, TEMP_FILE)  # TODO cambiar a Path
+        sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha, hora)
+        generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha, CARPETAS_PDF)
 
     # borrar archivo png temporal
-    if os.path.exists(TEMP_FILE_NAME):
-        os.remove(TEMP_FILE_NAME)
+    if os.path.exists(TEMP_FILE):
+        os.remove(TEMP_FILE)
     # guardar listado de archivos procesados, agregando a previos
     with open(LISTA_PROCESADOS, "wb") as archivo:
         pickle.dump(listado_nuevo, archivo, protocol=pickle.HIGHEST_PROTOCOL)
@@ -123,15 +124,15 @@ if __name__ == "__main__":
 
 # * Para compilar archivo con pyinstaller sin errores
 # * pyinstaller --onefile -F --hiddenimport=pydicom.encoders.gdcm --hiddenimport=pydicom.encoders.pylibjpeg
-# * --upx-dir=C:\Users\usuario\source\kpacs2pdf\upx-4.0.2-win64 --icon=C:\Users\usuario\source\kpacs2pdf\splash.ico --clean kpacs2pdf.py
+# * --upx-dir=C:/Users/usuario/source/kpacs2pdf/upx-4.0.2-win64 --icon=C:/Users/usuario/source/kpacs2pdf/splash.ico --clean kpacs2pdf.py
 # * agregar --upx-dir "CARPETA" para reducir tamaño de .exe generado en carpeta dist
 
 # TODO
 # Agregar directorio a procesar y guardar por consola? preguntando? argpars? os['ENV'] config.ini?
-# * carpeta = Path(r"C:\KPacs\Imagebox")
+# * carpeta = Path("C:/KPacs/Imagebox")
 # ? import tempfile para generar carpeta .tmp para archivo png?
 # ? Guardar uid de cada dicom dentro de meta de pdf? dentro de base de procesados?
 # CSV para presentar archivos procesados? probar reemplazar Pickle por SQLite?
-# Modificar posicion texto segun DPI imagen y segun longitud string? #im.size / get textbox size / etc.
+# Modificar posicion texto segun DPI imagen y segun longitud string? #im.size, get textbox size, etc.
 # Usar Mypy
 # Generar tests

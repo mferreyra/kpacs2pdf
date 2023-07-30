@@ -1,6 +1,6 @@
 Para compilar archivo con pyinstaller sin errores:
 
 pyinstaller --onefile -F --hiddenimport=pydicom.encoders.gdcm --hiddenimport=pydicom.encoders.pylibjpeg
---upx-dir=C:/Users/usuario/source/kpacs2pdf/upx-4.0.2-win64 --icon=C:/Users/usuario/source/kpacs2pdf/splash.ico --clean kpacs2pdf.py
+--upx-dir=C:/Users/usuario/source/kpacs2pdf/upx-4.0.2-win64 --icon=C:/Users/usuario/source/kpacs2pdf/icon.ico --clean kpacs2pdf.py
 
 # agregar --upx-dir "CARPETA" para reducir tamaño de .exe generado en carpeta dist

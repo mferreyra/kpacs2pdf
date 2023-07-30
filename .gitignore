@@ -166,4 +166,8 @@ pdf/
 upx-4.0.2-win64/
 DICOM\ test/ 
 informacion/
+recursos/
 upx-4.0.2-win64/
+kpacs2pdf_errores.txt
+kpacs2pdf_lista_procesados
+kpacs2pdf.ini

@@ -11,6 +11,20 @@ import pydicom
 from tqdm.auto import tqdm
 
 
+def procesar_config_file(path_ini, path_dicom_dir, path_pdf_dir):
+    '''procesar o generar .ini file'''
+    config_file = ConfigParser()
+    if not path_ini.exists():
+        with open(path_ini, 'x', encoding='UTF-8') as config_f:
+            config_f.write(
+            f'[dicom (Kpacks/Imagebox)]\n'
+            f'DICOM_dir = {path_dicom_dir}\n\n'
+            f'[pdf (Pacientes)]\n'
+            f'PDF_dir = {path_pdf_dir}\n')
+    config_file.read(path_ini, encoding='UTF-8')
+    return config_file
+
+
 def generar_imagen_temp(im_numpy_array, TEMP_FILE):
     plt.figure(figsize=(8.27, 11.69), dpi=150)  # para generar en tamaño de A4, con resolucion aceptable
     plt.imshow(im_numpy_array, cmap="gray_r", interpolation="nearest")
@@ -71,28 +85,17 @@ def generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha, CARPETAS_PDF):
 
 def main():
     logging.config.dictConfig({"disable_existing_loggers": True, "version": 1})  # *Para apagar warning de img2pdf
-    DEFAULT_PATH = Path.cwd()/"kpacs2pdf.ini"
-    DEFAULT_DICOM_DIR = "C:/Users/usuario/Documents/Trabajo/kpacs 28.06-30.06"  # *"C:/KPacs/Imagebox"
+    # archivo config
+    DEFAULT_INI_PATH = Path.cwd()/"kpacs2pdf.ini"
+    DEFAULT_DICOM_DIR = "C:/KPacs/Imagebox"
     DEFAULT_PDF_DIR = Path.cwd()/"pdf"
-
-    config = ConfigParser()
-    try:
-        config.read(DEFAULT_PATH, encoding='UTF-8')
-    except:
-        with open(DEFAULT_PATH, 'x', encoding='UTF-8') as config_file:
-            config_file.write(
-            f'[dicom (Kpacks/Imagebox)]\n'
-            f'DICOM_dir = {DEFAULT_DICOM_DIR}\n\n'
-            f'[pdf (Pacientes)]\n'
-            f'PDF_dir = {DEFAULT_PDF_DIR}\n')
-    finally:
-        config.read(DEFAULT_PATH, encoding='UTF-8')
-    # rutas
+    config_file = procesar_config_file(DEFAULT_INI_PATH, DEFAULT_DICOM_DIR, DEFAULT_PDF_DIR)
+    # rutas  # agregar a config_file?
     LISTA_PROCESADOS = Path.cwd()/"kpacs2pdf_lista_procesados"
-    TEMP_FILE = Path.cwd()/"kpacs2pdf_temp.temp"
     ARCHIVO_ERRORES = Path.cwd()/"kpacs2pdf_errores.txt"
-    CARPETAS_PDF = Path(config.get('pdf (Pacientes)', 'PDF_dir').strip('\"'))
-    CARPETA_IMAGEBOX = Path(config.get('dicom (Kpacks/Imagebox)', 'DICOM_dir').strip('\"'))
+    TEMP_FILE = Path.cwd()/"kpacs2pdf_temp.temp"
+    CARPETAS_PDF = Path(config_file.get('pdf (Pacientes)', 'PDF_dir').strip('\"'))
+    CARPETA_IMAGEBOX = Path(config_file.get('dicom (Kpacks/Imagebox)', 'DICOM_dir').strip('\"'))
     # listar archivos en directorio
     listado_dcm_nuevo = set(CARPETA_IMAGEBOX.rglob("*.dcm"))
     # cargar archivos ya procesados y hacer diff
@@ -137,8 +140,8 @@ if __name__ == "__main__":
 
 
 # TODO
-# ? Guardar uid de cada dicom dentro de meta de pdf? en db de procesados?
-# reemplazar Pickle por SQLite?
-# Modificar posicion texto segun DPI imagen y segun longitud string? #im.size, get textbox size, etc.
-# Usar Mypy
+# SQLite
+# agregar todas las rutas a config
+# ? Modificar posicion texto segun DPI imagen y segun longitud string? #im.size, get textbox size, etc.
+# ? Usar Mypy
 # ? Generar tests

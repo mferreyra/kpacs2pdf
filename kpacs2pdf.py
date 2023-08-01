@@ -5,7 +5,7 @@ import logging.config
 import matplotlib.pyplot as plt
 import os
 from pathlib import Path
-import pickle
+#import pickle
 from PIL import Image, ImageDraw, ImageFont
 from pydicom import dcmread
 import sqlite3
@@ -130,7 +130,7 @@ def main():
     DEFAULT_PDF_DIR = Path.cwd()/"pdf"
     config_file = procesar_config_file(DEFAULT_INI_PATH, DEFAULT_DICOM_DIR, DEFAULT_PDF_DIR)
     # rutas  # agregar a config_file?
-    LISTA_PROCESADOS = Path.cwd()/"kpacs2pdf_lista_procesados"
+    ###!LISTA_PROCESADOS = Path.cwd()/"kpacs2pdf_lista_procesados"
     ARCHIVO_ERRORES = Path.cwd()/"kpacs2pdf_errores.txt"
     TEMP_FILE = Path.cwd()/"kpacs2pdf_temp.temp"
     CARPETAS_PDF = Path(config_file.get('pdf (Pacientes)', 'PDF_dir').strip('\"'))
@@ -139,15 +139,17 @@ def main():
 
     # !----------------------
     # listar archivos en directorio
-    listado_dcm_nuevo = set(CARPETA_IMAGEBOX.rglob("*.dcm"))
-    # cargar archivos ya procesados y hacer diff
-    if os.path.exists(LISTA_PROCESADOS):  # TODO cambiar a base SQLite
-        with open(LISTA_PROCESADOS, "rb") as file:
-            listado_dcm_procesados = pickle.load(file)
-    else:
-        listado_dcm_procesados = set() # *Rutas sin duplicados
-    listado_dcm = listado_dcm_nuevo - listado_dcm_procesados
+    ###!listado_dcm_nuevo = set(CARPETA_IMAGEBOX.rglob("*.dcm"))
+    #! cargar archivos ya procesados y hacer diff
+    ###!if os.path.exists(LISTA_PROCESADOS):  # TODO cambiar a base SQLite
+    ###!    with open(LISTA_PROCESADOS, "rb") as file:
+    ###!        listado_dcm_procesados = pickle.load(file)
+    ###!else:
+    ###!    listado_dcm_procesados = set() # *Rutas sin duplicados
+    ###!listado_dcm = listado_dcm_nuevo - listado_dcm_procesados
+    #!--------------------
     crear_db(DB_PATH)
+    listado_dcm = set(CARPETA_IMAGEBOX.rglob("*.dcm"))
     #----------------------
 
     # crear carpeta para guardar pdf si no existe (evit error en img2pdf with open())
@@ -180,8 +182,8 @@ def main():
     if os.path.exists(TEMP_FILE):
         os.remove(TEMP_FILE)
     # guardar listado de archivos procesados, agregando a previos
-    with open(LISTA_PROCESADOS, "wb") as archivo:
-        pickle.dump(listado_dcm_nuevo, archivo, protocol=pickle.HIGHEST_PROTOCOL)  # TODO ver SQLite
+    ###!with open(LISTA_PROCESADOS, "wb") as archivo:
+    ###!    pickle.dump(listado_dcm_nuevo, archivo, protocol=pickle.HIGHEST_PROTOCOL)  # TODO ver SQLite
 
 
 if __name__ == "__main__":

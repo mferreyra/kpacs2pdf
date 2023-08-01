@@ -7,7 +7,8 @@ import os
 from pathlib import Path
 import pickle
 from PIL import Image, ImageDraw, ImageFont
-import pydicom
+from pydicom import dcmread
+import sqlite3
 from tqdm.auto import tqdm
 
 
@@ -35,7 +36,7 @@ def generar_imagen_temp(im_numpy_array, TEMP_FILE):
     plt.close()
 
 
-def sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha, hora):
+def sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha_placa, hora_placa):
     imagen = Image.open(TEMP_FILE)
     draw = ImageDraw.Draw(imagen)
     font = ImageFont.truetype("arial.ttf", 11)
@@ -51,7 +52,7 @@ def sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha, hora):
     text_sup_izq = f"{nombre_paciente}\n{im.PatientSex}\nID: {im.PatientID}"
     text_sup_der_1 = f"{im.InstitutionName}\n"
     text_sup_der_2 = f"\n Ref: {im.ReferringPhysicianName} / Perf:"  # *Si im.ReferringPhysicianName no vacio,sale de la imagen?
-    text_sup_der_3 = f"\n\nStudy date: {fecha}\nStudy time: {hora}"
+    text_sup_der_3 = f"\n\nStudy date: {fecha_placa}\nStudy time: {hora_placa}"
     text_inf_izq = (f"W{im.WindowWidth}  /  C{im.WindowCenter}\n \n S-Value: {im.Sensitivity}")
     text_inf_der = f"{im.BodyPartExamined }\nPosition: {im.ViewPosition}\n{im.InstanceNumber} IMA {im.SeriesNumber}\nZoom factor: x0.99"  # *Zoom harcoded!
     draw.text(sup_izq, text_sup_izq, font=font, fill="white", stroke_width=1, stroke_fill="black")
@@ -64,16 +65,16 @@ def sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha, hora):
     imagen.save(fp=TEMP_FILE, format="png")
 
 
-def generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha, CARPETAS_PDF):
+def generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha_placa, CARPETAS_PDF):
     # generar pdf con  mismo nombre que bullzip: "Apellido- Nombre- - CR from dia-mes-año S{num} I0"
     num = 0
     nombre_carpeta = f"{im.PatientID} {nombre_paciente}"
     nombre_upper = f"{nombre_paciente.upper().replace(' ', '- ').replace(',', '- ')}"
-    while os.path.exists(f"{CARPETAS_PDF}/{nombre_carpeta}/{nombre_upper}- - CR from {fecha} S{num} I0.pdf"):
+    while os.path.exists(f"{CARPETAS_PDF}/{nombre_carpeta}/{nombre_upper}- - CR from {fecha_placa} S{num} I0.pdf"):
         num += 1  # ! Puede que duplique imágenes si vuelvo a procesar la misma (Si borro lista procesados)
         if num > 50:  # numero arbitrario de máxima cantidad de imagenes por paciente?
             break
-    nombre_pdf = f"{nombre_upper}- - CR from {fecha} S{num} I0"
+    nombre_pdf = f"{nombre_upper}- - CR from {fecha_placa} S{num} I0"
     if not os.path.exists(f"{CARPETAS_PDF}/{nombre_carpeta}"):
         os.makedirs(f"{CARPETAS_PDF}/{nombre_carpeta}")
     setup_A4 = (img2pdf.mm_to_pt(210), img2pdf.mm_to_pt(297))
@@ -81,6 +82,44 @@ def generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha, CARPETAS_PDF):
     archivo_pdf = f"{nombre_carpeta}/{nombre_pdf}.pdf"
     with open(f"{CARPETAS_PDF}/{archivo_pdf}", "wb") as file:
         file.write(img2pdf.convert(TEMP_FILE.as_posix(), layout_fun=layout_fun))  # type: ignore
+
+
+def crear_db(DB_PATH):
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    sql_crear_tabla_placas = """CREATE TABLE IF NOT EXISTS Placas(
+                        UID REAL PRIMARY KEY, 
+                        NombrePaciente TEXT,
+                        IdPaciente INT NOT NULL,
+                        Fecha TEXT,
+                        Hora TEXT
+                        );"""
+    cursor.execute(sql_crear_tabla_placas)
+    connection.commit()
+    connection.close()
+
+
+def insertar_placa_en_db(DB_PATH, im, nombre_paciente, fecha_placa, hora_placa):
+    fecha_db = f"{fecha_placa[6:]}-{fecha_placa[3:5]}-{fecha_placa[0:2]}"
+    valores = (im.SOPInstanceUID, nombre_paciente, im.PatientID, fecha_db, hora_placa) 
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("""INSERT INTO Placas VALUES(?, ?, ?, ?, ?)""", valores)
+    connection.commit()
+    connection.close()
+
+
+def placa_ya_procesada(im, DB_PATH):
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    if cursor.execute("""SELECT UID FROM Placas WHERE UID=?""", [im.SOPInstanceUID] ).fetchone():
+        cursor.close()
+        connection.close()
+        return True
+    else:
+        cursor.close()
+        connection.close()
+        return False
 
 
 def main():
@@ -96,6 +135,9 @@ def main():
     TEMP_FILE = Path.cwd()/"kpacs2pdf_temp.temp"
     CARPETAS_PDF = Path(config_file.get('pdf (Pacientes)', 'PDF_dir').strip('\"'))
     CARPETA_IMAGEBOX = Path(config_file.get('dicom (Kpacks/Imagebox)', 'DICOM_dir').strip('\"'))
+    DB_PATH = Path.cwd()/"kpacs2pf_procesados.db"
+
+    # !----------------------
     # listar archivos en directorio
     listado_dcm_nuevo = set(CARPETA_IMAGEBOX.rglob("*.dcm"))
     # cargar archivos ya procesados y hacer diff
@@ -105,13 +147,16 @@ def main():
     else:
         listado_dcm_procesados = set() # *Rutas sin duplicados
     listado_dcm = listado_dcm_nuevo - listado_dcm_procesados
+    crear_db(DB_PATH)
+    #----------------------
+
     # crear carpeta para guardar pdf si no existe (evit error en img2pdf with open())
     if not os.path.exists(CARPETAS_PDF):
         os.mkdir(CARPETAS_PDF)
     # leer archivos dicom
     for item in tqdm(listado_dcm, desc="Procesando imagenes", colour="green", leave=True, position=0):
         try:
-            im = pydicom.dcmread(str(item))
+            im = dcmread(str(item))
             im_np_array = im.pixel_array
         except Exception as error:
             with open(ARCHIVO_ERRORES, "a+") as log:
@@ -119,13 +164,17 @@ def main():
             continue
         if (im.PatientID).startswith("1-"):  # * Saltear imagenes de MEVA para no procesarlas
             continue
+        if placa_ya_procesada(im, DB_PATH):  # !
+            continue
         # procesados
         nombre_paciente = f"{im.PatientName}".replace("^", " ")
-        fecha = f"{im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]}"
-        hora = f"{im.AcquisitionTime[0:2]}:{im.AcquisitionTime[2:4]}:{im.AcquisitionTime[4:6]}"
+        fecha_placa = f"{im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]}"
+        hora_placa = f"{im.AcquisitionTime[0:2]}:{im.AcquisitionTime[2:4]}:{im.AcquisitionTime[4:6]}"
         generar_imagen_temp(im_np_array, TEMP_FILE)
-        sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha, hora)
-        generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha, CARPETAS_PDF)
+        sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha_placa, hora_placa)
+        generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha_placa, CARPETAS_PDF)
+        # !
+        insertar_placa_en_db(DB_PATH, im, nombre_paciente, fecha_placa, hora_placa)
 
     # borrar archivo png temporal
     if os.path.exists(TEMP_FILE):
@@ -141,7 +190,7 @@ if __name__ == "__main__":
 
 # TODO
 # SQLite
-# agregar todas las rutas a config
+# ! agregar todas las rutas a config
 # ? Modificar posicion texto segun DPI imagen y segun longitud string? #im.size, get textbox size, etc.
 # ? Usar Mypy
 # ? Generar tests

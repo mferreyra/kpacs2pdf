@@ -171,3 +171,6 @@ upx-4.0.2-win64/
 kpacs2pdf_errores.txt
 kpacs2pdf_lista_procesados
 kpacs2pdf.ini
+test.dcm
+kpacs2pf_procesados.db
+SQL.py

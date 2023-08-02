@@ -103,11 +103,11 @@ def procesar_config_file(path_ini, path_dicom_dir, path_pdf_dir, db_path, error_
             f'[Ruta carpeta archivos DICOM (Kpacks/Imagebox)]\n'
             f'DICOM_dir = {path_dicom_dir}\n\n'
             f'[Ruta carpeta archivos pdf generados]\n'
-            f'PDF_dir = {path_pdf_dir}\n'
+            f'PDF_dir = {path_pdf_dir}\n\n'
             f'[Ruta carpeta base de datos]\n'
-            f'DB_dir = {db_path}\n'
+            f'DB_dir = {db_path}\n\n'
             f'[Ruta carpeta archivo errores al procesar DICOM]\n'
-            f'ERROR_dir = {error_path}\n')
+            f'ERROR_dir = {error_path}\n\n')
             print("Generado archivo config.ini con directorios a procesar")
             sys.exit()
     config_file.read(path_ini, encoding='UTF-8')
@@ -121,7 +121,7 @@ def sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha_placa, hora_p
     font = ImageFont.truetype("arial.ttf", 11)
     width, height = imagen.size
     # coordenadas para escribir en cada esquina de la imagen
-    sup_izq = (20, 20)
+    sup_izq = (20, 20)  # utilizar font.getlength(text) o font.getbbox(text) para estimar posicion?
     sup_der_1 = (width - 220, 20)
     sup_der_2 = (width - 85, 20)
     sup_der_3 = (width - 140, 20)
@@ -151,8 +151,8 @@ def main():
     DEFAULT_INI_PATH = Path.cwd()/"kpacs2pdf.ini"
     DEFAULT_DICOM_DIR = Path("C:/KPacs/Imagebox")
     DEFAULT_PDF_DIR = Path.cwd()/"pdf"
-    DEFAULT_ERROR_DIR = Path.cwd()
     DEFAULT_DB_DIR = Path.cwd()
+    DEFAULT_ERROR_DIR = Path.cwd()
     config_file = procesar_config_file(DEFAULT_INI_PATH, DEFAULT_DICOM_DIR, DEFAULT_PDF_DIR, DEFAULT_DB_DIR ,DEFAULT_ERROR_DIR)
     # rutas carpetas y archivos utilizados
     CARPETA_DICOM_IMAGEBOX = Path(config_file.get('Ruta carpeta archivos DICOM (Kpacks/Imagebox)', 'DICOM_dir').strip('\"'))
@@ -162,16 +162,16 @@ def main():
     TEMP_FILE = Path.cwd()/"kpacs2pdf_temp.temp"
     DB = CARPETA_DB/"kpacs2pf_procesados.db"
     ARCHIVO_ERRORES = CARPETA_ERRORES/"kpacs2pdf_errores.txt"
+    # crear carpetas si no existen (evita error en img2pdf with open())
+    for carpeta in [CARPETAS_PDF, CARPETA_DB, CARPETA_ERRORES]:
+        if not os.path.exists(carpeta):
+            os.mkdir(carpeta)
     # crear database si no existe una
     crear_db(DB)
     # listar archivos en directorio imagebox, cargar archivos ya procesados y hacer diff
     listado_carpeta_dcm = set(CARPETA_DICOM_IMAGEBOX.rglob("*.dcm"))
     listado_base_dcm = consultar_base(DB)
     listado_archivos_dcm = listado_carpeta_dcm - listado_base_dcm
-    # crear carpetas si no existen (evita error en img2pdf with open())
-    for carpeta in [CARPETAS_PDF, CARPETA_DB, CARPETA_ERRORES]:
-        if not os.path.exists(carpeta):
-            os.mkdir(carpeta)
     # leer archivos DICOM
     for item in tqdm(listado_archivos_dcm, desc="Procesando archivos DICOM", colour="green", leave=True, position=0):
         try:
@@ -212,7 +212,6 @@ if __name__ == "__main__":
 # TODO
 # opcion en config file para agregar string con ID parcial de placas para no procesar (Ej: "1-"" para saltear placas de Meva)
 # archivo errores a formato CSV con plantilla utilizando --add-data
-# Modificar posicion texto segun DPI imagen y segun longitud string? #im.size, get textbox size, etc.
 # ? sys._MEIPASS en pyinstaller
 # ? Usar Mypy
 # ? Generar tests

@@ -12,9 +12,9 @@ import sys
 from tqdm.auto import tqdm
 
 
-def consultar_base(DB_PATH):
+def consultar_base(DB):
     '''Devolver set de UID's de placas DICOM ya procesadas a pdf'''
-    connection = sqlite3.connect(DB_PATH)
+    connection = sqlite3.connect(DB)
     cursor = connection.cursor()
     lista = cursor.execute('''SELECT UID from Placas''').fetchall()
     lista = {item[0] for item in lista}
@@ -23,9 +23,9 @@ def consultar_base(DB_PATH):
     return lista
 
 
-def crear_db(DB_PATH):
+def crear_db(DB):
     '''Generar base de datos con placas convertidas a pdf, si no existe'''
-    connection = sqlite3.connect(DB_PATH)
+    connection = sqlite3.connect(DB)
     cursor = connection.cursor()
     sql_crear_tabla_placas = """CREATE TABLE IF NOT EXISTS Placas(
                         UID TEXT PRIMARY KEY, 
@@ -46,7 +46,7 @@ def generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha_placa, CARPETAS_PD
     nombre_upper = f"{nombre_paciente.upper().replace(' ', '- ').replace(',', '- ')}"
     while os.path.exists(f"{CARPETAS_PDF}/{nombre_carpeta}/{nombre_upper}- - CR from {fecha_placa} S{num} I0.pdf"):
         num += 1
-        if num > 100:  # !arbitraria cantidad max de pdf por paciente, por seguridad (condicion infinite loop)
+        if num > 100:  # !Maxima cantidad (arbitraria) de pdfs por paciente, por seguridad (condicion infinite loop?)
             break
     nombre_pdf = f"{nombre_upper}- - CR from {fecha_placa} S{num} I0"
     if not os.path.exists(f"{CARPETAS_PDF}/{nombre_carpeta}"):
@@ -69,20 +69,20 @@ def generar_imagen_temp(im_numpy_array, TEMP_FILE):
     plt.close()
 
 
-def insertar_placa_en_db(DB_PATH, im, nombre_paciente, fecha_placa, hora_placa):
+def insertar_placa_en_db(DB, im, nombre_paciente, fecha_placa, hora_placa):
     '''Insertar información de la placa procesada a pdf dentro de la base de datos'''
     fecha_db = f"{fecha_placa[6:]}-{fecha_placa[3:5]}-{fecha_placa[0:2]}"
     valores = (im.SOPInstanceUID, nombre_paciente, im.PatientID, fecha_db, hora_placa) 
-    connection = sqlite3.connect(DB_PATH)
+    connection = sqlite3.connect(DB)
     cursor = connection.cursor()
     cursor.execute("""INSERT INTO Placas VALUES(?, ?, ?, ?, ?)""", valores)
     connection.commit()
     connection.close()
 
 
-def placa_ya_procesada(im, DB_PATH):
+def placa_ya_procesada(im, DB):
     '''Verificar contra la bade de datos si esta placa ya fue procesada'''
-    connection = sqlite3.connect(DB_PATH)
+    connection = sqlite3.connect(DB)
     cursor = connection.cursor()
     if cursor.execute("""SELECT UID FROM Placas WHERE UID=?""", [im.SOPInstanceUID] ).fetchone():
         cursor.close()
@@ -94,16 +94,20 @@ def placa_ya_procesada(im, DB_PATH):
         return False
 
 
-def procesar_config_file(path_ini, path_dicom_dir, path_pdf_dir):
-    '''Procesar .ini file o generarlo si no existe y salir del programa'''
+def procesar_config_file(path_ini, path_dicom_dir, path_pdf_dir, db_path, error_path):
+    '''Procesar archivo .ini vs generarlo si no existe y salir del programa'''
     config_file = ConfigParser()
     if not path_ini.exists():
         with open(path_ini, 'x', encoding='UTF-8') as config_f:
             config_f.write(
-            f'[DICOM (Kpacks/Imagebox)]\n'
+            f'[Ruta carpeta archivos DICOM (Kpacks/Imagebox)]\n'
             f'DICOM_dir = {path_dicom_dir}\n\n'
-            f'[pdf (Pacientes)]\n'
-            f'PDF_dir = {path_pdf_dir}\n')
+            f'[Ruta carpeta archivos pdf generados]\n'
+            f'PDF_dir = {path_pdf_dir}\n'
+            f'[Ruta carpeta base de datos]\n'
+            f'DB_dir = {db_path}\n'
+            f'[Ruta carpeta archivo errores al procesar DICOM]\n'
+            f'ERROR_dir = {error_path}\n')
             print("Generado archivo config.ini con directorios a procesar")
             sys.exit()
     config_file.read(path_ini, encoding='UTF-8')
@@ -147,22 +151,27 @@ def main():
     DEFAULT_INI_PATH = Path.cwd()/"kpacs2pdf.ini"
     DEFAULT_DICOM_DIR = Path("C:/KPacs/Imagebox")
     DEFAULT_PDF_DIR = Path.cwd()/"pdf"
-    config_file = procesar_config_file(DEFAULT_INI_PATH, DEFAULT_DICOM_DIR, DEFAULT_PDF_DIR)
-    # rutas  # agregar a config_file?
-    ARCHIVO_ERRORES = Path.cwd()/"kpacs2pdf_errores.txt"
+    DEFAULT_ERROR_DIR = Path.cwd()
+    DEFAULT_DB_DIR = Path.cwd()
+    config_file = procesar_config_file(DEFAULT_INI_PATH, DEFAULT_DICOM_DIR, DEFAULT_PDF_DIR, DEFAULT_DB_DIR ,DEFAULT_ERROR_DIR)
+    # rutas carpetas y archivos utilizados
+    CARPETA_DICOM_IMAGEBOX = Path(config_file.get('Ruta carpeta archivos DICOM (Kpacks/Imagebox)', 'DICOM_dir').strip('\"'))
+    CARPETAS_PDF = Path(config_file.get('Ruta carpeta archivos pdf generados', 'PDF_dir').strip('\"'))
+    CARPETA_DB = Path(config_file.get('Ruta carpeta base de datos', 'DB_dir').strip('\"'))
+    CARPETA_ERRORES = Path(config_file.get('Ruta carpeta archivo errores al procesar DICOM', 'ERROR_dir').strip('\"'))
     TEMP_FILE = Path.cwd()/"kpacs2pdf_temp.temp"
-    CARPETAS_PDF = Path(config_file.get('pdf (Pacientes)', 'PDF_dir').strip('\"'))
-    CARPETA_DICOM_IMAGEBOX = Path(config_file.get('DICOM (Kpacks/Imagebox)', 'DICOM_dir').strip('\"'))
-    DB_PATH = Path.cwd()/"kpacs2pf_procesados.db"
-
-    crear_db(DB_PATH)  # crear database si no existe una
+    DB = CARPETA_DB/"kpacs2pf_procesados.db"
+    ARCHIVO_ERRORES = CARPETA_ERRORES/"kpacs2pdf_errores.txt"
+    # crear database si no existe una
+    crear_db(DB)
     # listar archivos en directorio imagebox, cargar archivos ya procesados y hacer diff
     listado_carpeta_dcm = set(CARPETA_DICOM_IMAGEBOX.rglob("*.dcm"))
-    listado_base_dcm = consultar_base(DB_PATH)
+    listado_base_dcm = consultar_base(DB)
     listado_archivos_dcm = listado_carpeta_dcm - listado_base_dcm
-    # crear carpeta para guardar pdf si no existe (evita error en img2pdf with open())
-    if not os.path.exists(CARPETAS_PDF):
-        os.mkdir(CARPETAS_PDF)
+    # crear carpetas si no existen (evita error en img2pdf with open())
+    for carpeta in [CARPETAS_PDF, CARPETA_DB, CARPETA_ERRORES]:
+        if not os.path.exists(carpeta):
+            os.mkdir(carpeta)
     # leer archivos DICOM
     for item in tqdm(listado_archivos_dcm, desc="Procesando archivos DICOM", colour="green", leave=True, position=0):
         try:
@@ -172,11 +181,11 @@ def main():
             with open(ARCHIVO_ERRORES, "a+") as log:
                 log.write(f"*|{datetime.now().strftime('%D %H:%M:%S')}| Archivo: {str(item)}\n    Error -> {repr(error)}\n")
             continue
-        if (im.PatientID).startswith("1-"):  # * Saltear placas de MEVA para no procesarlas
+        if (im.PatientID).startswith("1-"):  # *Saltear placas de Meva para no procesarlas
             continue
-        if placa_ya_procesada(im, DB_PATH):
+        if placa_ya_procesada(im, DB):  # *Saltear placas en base de datos
             continue
-        # procesar para convertir placa a pdf
+        # procesar dcm para convertir a pdf
         nombre_paciente = f"{im.PatientName}".replace("^", " ")
         fecha_placa = f"{im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]}"
         hora_placa = f"{im.AcquisitionTime[0:2]}:{im.AcquisitionTime[2:4]}:{im.AcquisitionTime[4:6]}"
@@ -185,7 +194,7 @@ def main():
         generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha_placa, CARPETAS_PDF)
         # guardar información de placa ya procesada a pdf en la base de datos
         try:
-            insertar_placa_en_db(DB_PATH, im, nombre_paciente, fecha_placa, hora_placa)
+            insertar_placa_en_db(DB, im, nombre_paciente, fecha_placa, hora_placa)
         except Exception as error:
             with open(ARCHIVO_ERRORES, "a+") as log:
                 log.write(f"*|{datetime.now().strftime('%D %H:%M:%S')}| Archivo: {str(item)}\n    Error -> {repr(error)}\n")
@@ -201,7 +210,9 @@ if __name__ == "__main__":
 
 
 # TODO
-# agregar todas las rutas a config
-# ? Modificar posicion texto segun DPI imagen y segun longitud string? #im.size, get textbox size, etc.
+# opcion en config file para agregar string con ID parcial de placas para no procesar (Ej: "1-"" para saltear placas de Meva)
+# archivo errores a formato CSV con plantilla utilizando --add-data
+# Modificar posicion texto segun DPI imagen y segun longitud string? #im.size, get textbox size, etc.
+# ? sys._MEIPASS en pyinstaller
 # ? Usar Mypy
 # ? Generar tests

@@ -183,6 +183,9 @@ def main():
             continue
         if (im.PatientID).strip().startswith("1-"):  # *Saltear placas de Meva para no procesarlas
             continue
+        año = im.StudyDate[0:4]
+        if int(año) < 2021:
+            continue
         if placa_ya_procesada(im, DB):  # *Saltear placas en base de datos
             continue
         # procesar dcm para convertir a pdf
@@ -211,7 +214,6 @@ if __name__ == "__main__":
 
 # TODO
 # opcion en config file para agregar string con ID parcial de placas para no procesar (Ej: "1-"" para saltear placas de Meva)
-# opcion de saltear placas adquiridas antes de determinada fecha
 # archivo errores a formato CSV con plantilla utilizando --add-data
 # ? sys._MEIPASS en pyinstaller
 # ? Usar Mypy

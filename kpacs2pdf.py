@@ -28,7 +28,7 @@ def crear_db(DB):
     connection = sqlite3.connect(DB)
     cursor = connection.cursor()
     sql_crear_tabla_placas = """CREATE TABLE IF NOT EXISTS Placas(
-                        UID TEXT PRIMARY KEY, 
+                        UID TEXT PRIMARY KEY,
                         NombrePaciente TEXT,
                         IdPaciente TEXT,
                         Fecha TEXT,
@@ -42,7 +42,7 @@ def crear_db(DB):
 def generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha_placa, CARPETAS_PDF):
     '''Generar archivo pdf con  mismo nombre que bullzip: "Apellido- Nombre- - CR from dia-mes-año S{num} I0" '''
     num = 0
-    nombre_carpeta = f"{im.PatientID} {nombre_paciente}"
+    nombre_carpeta = f"{im.PatientID} {nombre_paciente}"  # ! TODO
     nombre_upper = f"{nombre_paciente.upper().replace(' ', '- ').replace(',', '- ')}"
     while os.path.exists(f"{CARPETAS_PDF}/{nombre_carpeta}/{nombre_upper}- - CR from {fecha_placa} S{num} I0.pdf"):
         num += 1
@@ -72,7 +72,7 @@ def generar_imagen_temp(im_numpy_array, TEMP_FILE):
 def insertar_placa_en_db(DB, im, nombre_paciente, fecha_placa, hora_placa):
     '''Insertar información de la placa procesada a pdf dentro de la base de datos'''
     fecha_db = f"{fecha_placa[6:]}-{fecha_placa[3:5]}-{fecha_placa[0:2]}"
-    valores = (im.SOPInstanceUID, nombre_paciente, im.PatientID, fecha_db, hora_placa) 
+    valores = (im.SOPInstanceUID, nombre_paciente, im.PatientID, fecha_db, hora_placa)
     connection = sqlite3.connect(DB)
     cursor = connection.cursor()
     cursor.execute("""INSERT INTO Placas VALUES(?, ?, ?, ?, ?)""", valores)
@@ -84,7 +84,7 @@ def placa_ya_procesada(im, DB):
     '''Verificar contra la bade de datos si esta placa ya fue procesada'''
     connection = sqlite3.connect(DB)
     cursor = connection.cursor()
-    if cursor.execute("""SELECT UID FROM Placas WHERE UID=?""", [im.SOPInstanceUID] ).fetchone():
+    if cursor.execute("""SELECT UID FROM Placas WHERE UID=?""", [im.SOPInstanceUID]).fetchone():
         cursor.close()
         connection.close()
         return True
@@ -100,14 +100,14 @@ def procesar_config_file(path_ini, path_dicom_dir, path_pdf_dir, db_path, error_
     if not path_ini.exists():
         with open(path_ini, 'x', encoding='UTF-8') as config_f:
             config_f.write(
-            f'[Ruta carpeta archivos DICOM (Kpacks/Imagebox)]\n'
-            f'DICOM_dir = {path_dicom_dir}\n\n'
-            f'[Ruta carpeta archivos pdf generados]\n'
-            f'PDF_dir = {path_pdf_dir}\n\n'
-            f'[Ruta carpeta base de datos]\n'
-            f'DB_dir = {db_path}\n\n'
-            f'[Ruta carpeta archivo errores al procesar DICOM]\n'
-            f'ERROR_dir = {error_path}\n\n')
+                f'[Ruta carpeta archivos DICOM (Kpacks/Imagebox)]\n'
+                f'DICOM_dir = {path_dicom_dir}\n\n'
+                f'[Ruta carpeta archivos pdf generados]\n'
+                f'PDF_dir = {path_pdf_dir}\n\n'
+                f'[Ruta carpeta base de datos]\n'
+                f'DB_dir = {db_path}\n\n'
+                f'[Ruta carpeta archivo errores al procesar DICOM]\n'
+                f'ERROR_dir = {error_path}\n\n')
             print("Generado archivo config.ini con directorios a procesar")
             sys.exit()
     config_file.read(path_ini, encoding='UTF-8')
@@ -148,20 +148,20 @@ def main():
     '''Punto de partida para la ejecución del programa'''
     logging.config.dictConfig({"disable_existing_loggers": True, "version": 1})  # *Para apagar warning de img2pdf
     # archivo config
-    DEFAULT_INI_PATH = Path.cwd()/"kpacs2pdf.ini"
+    DEFAULT_INI_PATH = Path.cwd() / "kpacs2pdf.ini"
     DEFAULT_DICOM_DIR = Path("C:/KPacs/Imagebox")
-    DEFAULT_PDF_DIR = Path.cwd()/"pdf"
+    DEFAULT_PDF_DIR = Path.cwd() / "pdf"
     DEFAULT_DB_DIR = Path.cwd()
     DEFAULT_ERROR_DIR = Path.cwd()
-    config_file = procesar_config_file(DEFAULT_INI_PATH, DEFAULT_DICOM_DIR, DEFAULT_PDF_DIR, DEFAULT_DB_DIR ,DEFAULT_ERROR_DIR)
+    config_file = procesar_config_file(DEFAULT_INI_PATH, DEFAULT_DICOM_DIR, DEFAULT_PDF_DIR, DEFAULT_DB_DIR, DEFAULT_ERROR_DIR)
     # rutas carpetas y archivos utilizados
     CARPETA_DICOM_IMAGEBOX = Path(config_file.get('Ruta carpeta archivos DICOM (Kpacks/Imagebox)', 'DICOM_dir').strip('\"'))
     CARPETAS_PDF = Path(config_file.get('Ruta carpeta archivos pdf generados', 'PDF_dir').strip('\"'))
     CARPETA_DB = Path(config_file.get('Ruta carpeta base de datos', 'DB_dir').strip('\"'))
     CARPETA_ERRORES = Path(config_file.get('Ruta carpeta archivo errores al procesar DICOM', 'ERROR_dir').strip('\"'))
-    TEMP_FILE = Path.cwd()/"kpacs2pdf_temp.temp"
-    DB = CARPETA_DB/"kpacs2pf_procesados.db"
-    ARCHIVO_ERRORES = CARPETA_ERRORES/"kpacs2pdf_errores.txt"
+    TEMP_FILE = Path.cwd() / "kpacs2pdf_temp.temp"
+    DB = CARPETA_DB / "kpacs2pf_procesados.db"
+    ARCHIVO_ERRORES = CARPETA_ERRORES / "kpacs2pdf_errores.txt"
     # crear carpetas si no existen (evita error en img2pdf with open())
     for carpeta in [CARPETAS_PDF, CARPETA_DB, CARPETA_ERRORES]:
         if not os.path.exists(carpeta):
@@ -170,7 +170,7 @@ def main():
     crear_db(DB)
     # listar archivos en directorio imagebox, cargar archivos ya procesados y hacer diff
     listado_carpeta_dcm = set(CARPETA_DICOM_IMAGEBOX.rglob("*.dcm"))
-    listado_base_dcm = consultar_base(DB)
+    listado_base_dcm = consultar_base(DB)  # ! TODO Procesar todos y detallar en base que proceso hice
     listado_archivos_dcm = listado_carpeta_dcm - listado_base_dcm
     # leer archivos DICOM
     for item in tqdm(listado_archivos_dcm, desc="Procesando archivos DICOM", colour="green", leave=True, position=0):
@@ -181,7 +181,7 @@ def main():
             with open(ARCHIVO_ERRORES, "a+") as log:
                 log.write(f"*|{datetime.now().strftime('%D %H:%M:%S')}| Archivo: {str(item)}\n    Error -> {repr(error)}\n")
             continue
-        if (im.PatientID).strip().startswith("1-"):  # *Saltear placas de Meva para no procesarlas
+        if (im.PatientID).strip().startswith("1-"):  # Saltear placas de Meva para no procesarlas  # ! TODO
             continue
         año = im.StudyDate[0:4]
         if int(año) < 2021:
@@ -213,8 +213,11 @@ if __name__ == "__main__":
 
 
 # TODO
+# ! Validar datos im (im.PatientID, im.PatientName, etc)
+# Procesar todas las im y detallar en db que proceso hice. Detallar ruta en db
+# Validar ruta antes de os.mkdir
 # opcion en config file para agregar string con ID parcial de placas para no procesar (Ej: "1-"" para saltear placas de Meva)
-# archivo errores a formato CSV con plantilla utilizando --add-data
-# ? sys._MEIPASS en pyinstaller
-# ? Usar Mypy
+# opcion en config file para agregar string con fecha de placas para no procesar (Ej: <2021 para saltear placas viejas)
+# archivo errores a formato CSV con plantilla utilizando --add-data? Incluir ruta (hyperlink) al archivo que fallo
+# ? Usar Mypy/types hint
 # ? Generar tests

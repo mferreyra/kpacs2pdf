@@ -42,7 +42,7 @@ def crear_db(DB):
 def generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha_placa, CARPETAS_PDF):
     '''Generar archivo pdf con  mismo nombre que bullzip: "Apellido- Nombre- - CR from dia-mes-año S{num} I0" '''
     num = 0
-    nombre_carpeta = f"{im.PatientID} {nombre_paciente}"
+    nombre_carpeta = f"{im.PatientID} {nombre_paciente}"  #! TODO
     nombre_upper = f"{nombre_paciente.upper().replace(' ', '- ').replace(',', '- ')}"
     while os.path.exists(f"{CARPETAS_PDF}/{nombre_carpeta}/{nombre_upper}- - CR from {fecha_placa} S{num} I0.pdf"):
         num += 1
@@ -170,7 +170,7 @@ def main():
     crear_db(DB)
     # listar archivos en directorio imagebox, cargar archivos ya procesados y hacer diff
     listado_carpeta_dcm = set(CARPETA_DICOM_IMAGEBOX.rglob("*.dcm"))
-    listado_base_dcm = consultar_base(DB)
+    listado_base_dcm = consultar_base(DB) #! TODO Procesar todos y detallar en base que proceso hice
     listado_archivos_dcm = listado_carpeta_dcm - listado_base_dcm
     # leer archivos DICOM
     for item in tqdm(listado_archivos_dcm, desc="Procesando archivos DICOM", colour="green", leave=True, position=0):
@@ -181,7 +181,7 @@ def main():
             with open(ARCHIVO_ERRORES, "a+") as log:
                 log.write(f"*|{datetime.now().strftime('%D %H:%M:%S')}| Archivo: {str(item)}\n    Error -> {repr(error)}\n")
             continue
-        if (im.PatientID).strip().startswith("1-"):  # *Saltear placas de Meva para no procesarlas
+        if (im.PatientID).strip().startswith("1-"):  # Saltear placas de Meva para no procesarlas  # ! TODO
             continue
         año = im.StudyDate[0:4]
         if int(año) < 2021:
@@ -213,8 +213,11 @@ if __name__ == "__main__":
 
 
 # TODO
+#! Validar datos im (im.PatientII, im.PatientName, etc)
+# Procesar todas las im y detallar en db que proceso hice. Detallarruta en db
+# Validar ruta antes de os.mkdir
 # opcion en config file para agregar string con ID parcial de placas para no procesar (Ej: "1-"" para saltear placas de Meva)
-# archivo errores a formato CSV con plantilla utilizando --add-data
-# ? sys._MEIPASS en pyinstaller
-# ? Usar Mypy
+# opcion en config file para agregar string con fecha de placas para no procesar (Ej: <2021 para saltear placas viejas)
+# archivo errores a formato CSV con plantilla utilizando --add-data? Incluir ruta (h-link) al archivo que fallo
+# ? Usar Mypy/types hint
 # ? Generar tests

@@ -50,6 +50,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+test/
 
 # Translations
 *.mo
@@ -127,6 +128,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.venv2
 
 # Spyder project settings
 .spyderproject
@@ -174,3 +176,6 @@ kpacs2pdf.ini
 test.dcm
 kpacs2pf_procesados.db
 SQL.py
+kpacs2pdf.build/
+kpacs2pdf.dist/
+kpacs2pdf.onefile-build/

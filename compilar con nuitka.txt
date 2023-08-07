@@ -1,0 +1,3 @@
+python -m nuitka --onefile --include-package=pydicom --windows-icon-from-ico=icono.ico kpacs2pdf.py
+
+--include-package-data ?

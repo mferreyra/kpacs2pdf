@@ -32,17 +32,18 @@ def crear_db(DB):
                         NombrePaciente TEXT,
                         IdPaciente TEXT,
                         Fecha TEXT,
-                        Hora TEXT
+                        Hora TEXT,
+                        Carpeta TEXT
                         );"""
     cursor.execute(sql_crear_tabla_placas)
     connection.commit()
     connection.close()
 
 
-def generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha_placa, CARPETAS_PDF):
+def generar_archivo_pdf(TEMP_FILE, nombre_paciente, id_paciente, fecha_placa, CARPETAS_PDF):
     '''Generar archivo pdf con  mismo nombre que bullzip: "Apellido- Nombre- - CR from dia-mes-año S{num} I0" '''
     num = 0
-    nombre_carpeta = f"{im.PatientID} {nombre_paciente}"  # ! TODO
+    nombre_carpeta = f"{id_paciente} {nombre_paciente}"
     nombre_upper = f"{nombre_paciente.upper().replace(' ', '- ').replace(',', '- ')}"
     while os.path.exists(f"{CARPETAS_PDF}/{nombre_carpeta}/{nombre_upper}- - CR from {fecha_placa} S{num} I0.pdf"):
         num += 1
@@ -69,13 +70,13 @@ def generar_imagen_temp(im_numpy_array, TEMP_FILE):
     plt.close()
 
 
-def insertar_placa_en_db(DB, im, nombre_paciente, fecha_placa, hora_placa):
+def insertar_placa_en_db(DB, im, nombre_paciente, fecha_placa, hora_placa, carpeta_placa):
     '''Insertar información de la placa procesada a pdf dentro de la base de datos'''
     fecha_db = f"{fecha_placa[6:]}-{fecha_placa[3:5]}-{fecha_placa[0:2]}"
-    valores = (im.SOPInstanceUID, nombre_paciente, im.PatientID, fecha_db, hora_placa)
+    valores = (im.SOPInstanceUID, nombre_paciente, im.PatientID, fecha_db, hora_placa, carpeta_placa)
     connection = sqlite3.connect(DB)
     cursor = connection.cursor()
-    cursor.execute("""INSERT INTO Placas VALUES(?, ?, ?, ?, ?)""", valores)
+    cursor.execute("""INSERT INTO Placas VALUES(?, ?, ?, ?, ?, ?)""", valores)
     connection.commit()
     connection.close()
 
@@ -114,6 +115,11 @@ def procesar_config_file(path_ini, path_dicom_dir, path_pdf_dir, db_path, error_
     return config_file
 
 
+def validar_str(texto:str):
+    bad_chars = ['\\', '/', ":", '*', '?', '"', '<', '>', '|']
+    return ''.join(filter(lambda char: char not in bad_chars, texto))
+
+
 def sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha_placa, hora_placa):
     '''Colocar por sobre la imagen anotaciones de la placa adquirida'''
     imagen = Image.open(TEMP_FILE)
@@ -147,6 +153,7 @@ def sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha_placa, hora_p
 def main():
     '''Punto de partida para la ejecución del programa'''
     logging.config.dictConfig({"disable_existing_loggers": True, "version": 1})  # *Para apagar warning de img2pdf
+    
     # archivo config
     DEFAULT_INI_PATH = Path.cwd() / "kpacs2pdf.ini"
     DEFAULT_DICOM_DIR = Path("C:/KPacs/Imagebox")
@@ -154,24 +161,30 @@ def main():
     DEFAULT_DB_DIR = Path.cwd()
     DEFAULT_ERROR_DIR = Path.cwd()
     config_file = procesar_config_file(DEFAULT_INI_PATH, DEFAULT_DICOM_DIR, DEFAULT_PDF_DIR, DEFAULT_DB_DIR, DEFAULT_ERROR_DIR)
-    # rutas carpetas y archivos utilizados
+    
+    # rutas a carpetas utilizados en config_file
     CARPETA_DICOM_IMAGEBOX = Path(config_file.get('Ruta carpeta archivos DICOM (Kpacks/Imagebox)', 'DICOM_dir').strip('\"'))
     CARPETAS_PDF = Path(config_file.get('Ruta carpeta archivos pdf generados', 'PDF_dir').strip('\"'))
     CARPETA_DB = Path(config_file.get('Ruta carpeta base de datos', 'DB_dir').strip('\"'))
     CARPETA_ERRORES = Path(config_file.get('Ruta carpeta archivo errores al procesar DICOM', 'ERROR_dir').strip('\"'))
+    #rutas archivos
     TEMP_FILE = Path.cwd() / "kpacs2pdf_temp.temp"
     DB = CARPETA_DB / "kpacs2pf_procesados.db"
     ARCHIVO_ERRORES = CARPETA_ERRORES / "kpacs2pdf_errores.txt"
+
     # crear carpetas si no existen (evita error en img2pdf with open())
     for carpeta in [CARPETAS_PDF, CARPETA_DB, CARPETA_ERRORES]:
         if not os.path.exists(carpeta):
             os.mkdir(carpeta)
+
     # crear database si no existe una
     crear_db(DB)
+
     # listar archivos en directorio imagebox, cargar archivos ya procesados y hacer diff
     listado_carpeta_dcm = set(CARPETA_DICOM_IMAGEBOX.rglob("*.dcm"))
     listado_base_dcm = consultar_base(DB)  # ! TODO Procesar todos y detallar en base que proceso hice
     listado_archivos_dcm = listado_carpeta_dcm - listado_base_dcm
+
     # leer archivos DICOM
     for item in tqdm(listado_archivos_dcm, desc="Procesando archivos DICOM", colour="green", leave=True, position=0):
         try:
@@ -181,23 +194,27 @@ def main():
             with open(ARCHIVO_ERRORES, "a+") as log:
                 log.write(f"*|{datetime.now().strftime('%D %H:%M:%S')}| Archivo: {str(item)}\n    Error -> {repr(error)}\n")
             continue
-        if (im.PatientID).strip().startswith("1-"):  # Saltear placas de Meva para no procesarlas  # ! TODO
+        if (validar_str(im.PatientID)).strip().startswith("1-"):  # *Saltear placas de Meva para no procesarlas
             continue
-        año = im.StudyDate[0:4]
+        año = im.StudyDate[0:4]  # *Saltear placas viejas
         if int(año) < 2021:
             continue
-        if placa_ya_procesada(im, DB):  # *Saltear placas en base de datos
+        if placa_ya_procesada(im, DB):  # *Saltear placas ya en base de datos
             continue
+
         # procesar dcm para convertir a pdf
-        nombre_paciente = f"{im.PatientName}".replace("^", " ")
+        id_paciente = validar_str(im.PatientID)
+        nombre_paciente = validar_str(f"{im.PatientName}".replace("^", " "))
         fecha_placa = f"{im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]}"
         hora_placa = f"{im.AcquisitionTime[0:2]}:{im.AcquisitionTime[2:4]}:{im.AcquisitionTime[4:6]}"
+        carpeta_placa = str(item.parent)
         generar_imagen_temp(im_np_array, TEMP_FILE)
         sobrescribir_imagen_temp(im, TEMP_FILE, nombre_paciente, fecha_placa, hora_placa)
-        generar_archivo_pdf(im, TEMP_FILE, nombre_paciente, fecha_placa, CARPETAS_PDF)
+        generar_archivo_pdf(TEMP_FILE, nombre_paciente, id_paciente, fecha_placa, CARPETAS_PDF)
+
         # guardar información de placa ya procesada a pdf en la base de datos
         try:
-            insertar_placa_en_db(DB, im, nombre_paciente, fecha_placa, hora_placa)
+            insertar_placa_en_db(DB, im, nombre_paciente, fecha_placa, hora_placa, carpeta_placa)
         except Exception as error:
             with open(ARCHIVO_ERRORES, "a+") as log:
                 log.write(f"*|{datetime.now().strftime('%D %H:%M:%S')}| Archivo: {str(item)}\n    Error -> {repr(error)}\n")
@@ -213,9 +230,8 @@ if __name__ == "__main__":
 
 
 # TODO
-# ! Validar datos im (im.PatientID, im.PatientName, etc)
-# Procesar todas las im y detallar en db que proceso hice. Detallar ruta en db
-# Validar ruta antes de os.mkdir
+# ! Validar ruta en config_file
+# Procesar todas las im y detallar en db que proceso hice.
 # opcion en config file para agregar string con ID parcial de placas para no procesar (Ej: "1-"" para saltear placas de Meva)
 # opcion en config file para agregar string con fecha de placas para no procesar (Ej: <2021 para saltear placas viejas)
 # archivo errores a formato CSV con plantilla utilizando --add-data? Incluir ruta (hyperlink) al archivo que fallo

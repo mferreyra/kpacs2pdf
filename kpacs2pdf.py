@@ -196,8 +196,10 @@ def main():
             continue
         if (validar_str(im.PatientID)).strip().startswith("1-"):  # *Saltear placas de Meva para no procesarlas
             continue
+        if not(validar_str(im.PatientID).strip()):  # *Saltear placa si el ID quedo vacio (error al generar carpeta)
+            continue
         año = im.StudyDate[0:4]  # *Saltear placas viejas
-        if int(año) < 2021:
+        if int(año) < 2023:
             continue
         if placa_ya_procesada(im, DB):  # *Saltear placas ya en base de datos
             continue

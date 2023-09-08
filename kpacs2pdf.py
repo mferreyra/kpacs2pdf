@@ -232,6 +232,7 @@ if __name__ == "__main__":
 
 
 # TODO
+# ! Procesar unicamente placas que no estan en DB
 # ! Validar ruta en config_file
 # Procesar todas las im y detallar en db que proceso hice.
 # opcion en config file para agregar string con ID parcial de placas para no procesar (Ej: "1-"" para saltear placas de Meva)

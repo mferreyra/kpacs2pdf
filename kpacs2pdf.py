@@ -181,10 +181,9 @@ def main():
     crear_db(DB)
 
     # listar archivos en directorio imagebox, cargar archivos ya procesados y hacer diff
-    listado_carpeta_dcm = set(CARPETA_DICOM_IMAGEBOX.rglob("*.dcm"))
+    listado_carpeta_dcm = {item.stem for item in CARPETA_DICOM_IMAGEBOX.rglob("*.dcm")}
     listado_base_dcm = consultar_base(DB)  # ! TODO Procesar todos y detallar en base que proceso hice
     listado_archivos_dcm = listado_carpeta_dcm - listado_base_dcm
-
     # leer archivos DICOM
     for item in tqdm(listado_archivos_dcm, desc="Procesando archivos DICOM", colour="green", leave=True, position=0):
         try:

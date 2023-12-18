@@ -181,10 +181,9 @@ def main():
     crear_db(DB)
 
     # listar archivos en directorio imagebox, cargar archivos ya procesados y hacer diff
-    listado_carpeta_dcm = set(CARPETA_DICOM_IMAGEBOX.rglob("*.dcm"))
+    listado_carpeta_dcm = {item.stem for item in CARPETA_DICOM_IMAGEBOX.rglob("*.dcm")}
     listado_base_dcm = consultar_base(DB)  # ! TODO Procesar todos y detallar en base que proceso hice
     listado_archivos_dcm = listado_carpeta_dcm - listado_base_dcm
-
     # leer archivos DICOM
     for item in tqdm(listado_archivos_dcm, desc="Procesando archivos DICOM", colour="green", leave=True, position=0):
         try:
@@ -196,8 +195,10 @@ def main():
             continue
         if (validar_str(im.PatientID)).strip().startswith("1-"):  # *Saltear placas de Meva para no procesarlas
             continue
+        if not(validar_str(im.PatientID).strip()):  # *Saltear placa si el ID quedo vacio (error al generar carpeta)
+            continue
         año = im.StudyDate[0:4]  # *Saltear placas viejas
-        if int(año) < 2021:
+        if int(año) < 2023:
             continue
         if placa_ya_procesada(im, DB):  # *Saltear placas ya en base de datos
             continue
@@ -230,6 +231,7 @@ if __name__ == "__main__":
 
 
 # TODO
+# ! Procesar unicamente placas que no estan en DB
 # ! Validar ruta en config_file
 # Procesar todas las im y detallar en db que proceso hice.
 # opcion en config file para agregar string con ID parcial de placas para no procesar (Ej: "1-"" para saltear placas de Meva)

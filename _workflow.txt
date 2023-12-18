@@ -1,0 +1,98 @@
+-creo repositorio en Github, con readme.txt y .gitignore template de python, nombrando mi proyecto
+// Sino podria hacerlo directamente solo localmente con git init (desde directorio proyecto) / git init NOMBRE_DIRECTORIO_PROYECTO
+// agregar a .gitignore .vscode/settings.json
+
+- clono repositorio localmente
+
+En caso de que vaya a inslatar librerias, entonces mejor creo un entorno:
+python -m venv .venv --upgrade-deps --prompt="dcm2pdf"  
+// .venv es el nombre del entorno virtual, al que lo llamo asi por convencion para que en caso de trabajar en equipo, podamos tener la misma estructura de directorios. 
+ Si quiero cambiar el nombre que va a aparecer al activar el entorno virtual  le agrego --prompt= "NOMBRE_DEL_PROMPT_PARA_ENTORNO" pero la carpeta seguirá siendo .venv
+ --upgrade-deps es para que actualice automaticamente pip y setuptools, ya que instala desde ensurepip, para garantizar el arranque de pip en el entorno, no acccede a internet
+
+Using pyenv to Install Python
+ pyenv install --list
+Once you find the version you want, you can install it with a single command: 
+ pyenv install 3.7.2
+ pyenv uninstall 2.7.15
+
+check what versions of Python you have available: The * indicates that the system Python version is active currently
+ pyenv versions
+* misma que hacer: python -V
+
+para seleccionar version a utilizar:
+pyenv global 2.7.15
+
+Luego de tener una version seleccionada ya puedo utilizar venv normalmente y asi crear un repositoro de trabajo con una version particular de python
+Luego setear version local con: pyenv local?
+
+.venv\scripts\activate
+// para activar el entorno
+
+// para actualizar pip
+python -m pip install --upgrade pip
+python -m pip install --upgrade setuptools   Para actualizar el instalador
+
+// instalo librerias/modulos/package a utilizar en el proyecto, estando dentro del entrono virtual! (activado)
+python -m pip install NOMBRES_DE_LIBRERIAS
+
+pip freeze > requirements.txt
+// para escribir en un txt los paquetes que tengo instalados en mi entorno virtual
+
+python -m pip install -r requirements.txt
+// para, luego de entrar en un entorno nuevo, puedo intalar todas las dependecias de una
+
+pip --list
+// para listar paquetes instalados
+
+deactivate
+// para desactivar el entorno
+
+git add <ARCHIVOS>
+// para agregar al staging (. agrega todos en la carpeta)
+
+git commint -m "message"
+// para comitear (localmente)
+
+git commit --amend -m "mensaje"
+//para modificar el último commit
+
+git commit --amend --no-edit 
+//permite hacer las correcciones en el commit sin cambiar el mensaje.
+
+git push origin main
+//para enviar a repositorio remoto (o solo git push)
+
+git push --force
+//para forzar a sobrescribir cambios en repositorio remoto
+
+git status
+//para ver como es el estado de cambios de mis archivos, ignorando los de .gitignore
+ Ojo! solo para repositorio local, no muestra si tengo cambios a partir de un commit hecho en el repositorio remoto, es decir,
+ si devuelve up-to-date with 'origin/master' significa que no hay nada para hacer push, pero para verificar si no hay nuevos commits
+ en el repositorio remoto debo usar: git remote -v show origin
+ Y si hay commits para poder hacer un git pull, aparecera el mensaje: master pushes to master (local out of date)
+
+git status -uno
+//para ver si mi local esta adelantado o atrasado respecto de remoto
+
+git remote -v update
+//you can see which branches got updated.
+
+git checkout -b BranchName  #Create and move directly to the branch
+git branch -#To check we are on the good branch
+git fetch origin # fetch all changes
+git pull origin main # pull changes from the origin remote, master branch and merge them into my_branch
+git status #To check new or modifid files
+git add . #To add all your changes
+git commit -m "Your message" #To indicate what you were working on
+git push -u origin BranchName #Push your branch to remote
+##WARINIG##
+#If you merge your branch is deleted and integrated to main
+git checkout main #Change branch to main
+git merge Branchname -m "your message" #Merge your branch on main
+
+
+(VER poetry)
+
+

@@ -115,7 +115,7 @@ def procesar_config_file(path_ini, path_dicom_dir, path_pdf_dir, db_path, error_
     return config_file
 
 
-def validar_str(texto:str):
+def validar_str(texto: str):
     bad_chars = ['\\', '/', ":", '*', '?', '"', '<', '>', '|']
     return ''.join(filter(lambda char: char not in bad_chars, texto))
 
@@ -206,6 +206,8 @@ def main():
         # procesar dcm para convertir a pdf
         id_paciente = validar_str(im.PatientID)
         nombre_paciente = validar_str(f"{im.PatientName}".replace("^", " "))
+        if not nombre_paciente:
+            nombre_paciente = "---"
         fecha_placa = f"{im.StudyDate[6:]}-{im.StudyDate[4:6]}-{im.StudyDate[0:4]}"
         hora_placa = f"{im.AcquisitionTime[0:2]}:{im.AcquisitionTime[2:4]}:{im.AcquisitionTime[4:6]}"
         carpeta_placa = str(item.parent)

@@ -14,30 +14,27 @@ from tqdm.auto import tqdm
 
 def consultar_base(DB):
     '''Devolver set de UID's de placas DICOM ya procesadas a pdf'''
-    connection = sqlite3.connect(DB)
-    cursor = connection.cursor()
-    lista = cursor.execute('''SELECT UID from Placas''').fetchall()
-    lista = {item[0] for item in lista}
-    cursor.close()
-    connection.close()
+    with sqlite3.connect(DB) as connection:
+        cursor = connection.cursor()
+        lista = cursor.execute('''SELECT UID from Placas''').fetchall()
+        lista = {item[0] for item in lista}
     return lista
 
 
 def crear_db(DB):
     '''Generar base de datos con placas convertidas a pdf, si no existe'''
-    connection = sqlite3.connect(DB)
-    cursor = connection.cursor()
-    sql_crear_tabla_placas = """CREATE TABLE IF NOT EXISTS Placas(
-                        UID TEXT PRIMARY KEY,
-                        NombrePaciente TEXT,
-                        IdPaciente TEXT,
-                        Fecha TEXT,
-                        Hora TEXT,
-                        Carpeta TEXT
-                        );"""
-    cursor.execute(sql_crear_tabla_placas)
-    connection.commit()
-    connection.close()
+    with sqlite3.connect(DB) as connection:
+        cursor = connection.cursor()
+        sql_crear_tabla_placas = """CREATE TABLE IF NOT EXISTS Placas(
+                            UID TEXT PRIMARY KEY,
+                            NombrePaciente TEXT,
+                            IdPaciente TEXT,
+                            Fecha TEXT,
+                            Hora TEXT,
+                            Carpeta TEXT
+                            );"""
+        cursor.execute(sql_crear_tabla_placas)
+        connection.commit()
 
 
 def generar_archivo_pdf(TEMP_FILE, nombre_paciente, id_paciente, fecha_placa, CARPETAS_PDF):
@@ -167,7 +164,7 @@ def main():
     CARPETAS_PDF = Path(config_file.get('Ruta carpeta archivos pdf generados', 'PDF_dir').strip('\"'))
     CARPETA_DB = Path(config_file.get('Ruta carpeta base de datos', 'DB_dir').strip('\"'))
     CARPETA_ERRORES = Path(config_file.get('Ruta carpeta archivo errores al procesar DICOM', 'ERROR_dir').strip('\"'))
-    #rutas archivos
+    # rutas archivos
     TEMP_FILE = Path.cwd() / "kpacs2pdf_temp.temp"
     DB = CARPETA_DB / "kpacs2pf_procesados.db"
     ARCHIVO_ERRORES = CARPETA_ERRORES / "kpacs2pdf_errores.txt"
